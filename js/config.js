@@ -42,6 +42,51 @@ const CONFIG = {
     PID: { Kp: 3.0, Ki: 0.05, Kd: 1.5, Kff: 2.0 },
 
     // =====================================================
+    //  AUDIENCE PROFILES: Premium (Rich) vs Economy (Mid-Range)
+    //  These modify the controller's optimization weights
+    // =====================================================
+    AUDIENCE_PROFILES: {
+        premium: {
+            name: '💎 Premium (Comfort-First)',
+            description: 'Maximum comfort. AC runs aggressively. Cost is not a concern.',
+            tempTolerance: 0.5,          // ±0.5°F — must maintain exact setpoint
+            energyPenaltyWeight: 0.01,   // Almost zero — don't care about energy cost
+            carbonPenaltyWeight: 0.01,   // Almost zero — don't care about emissions
+            comfortPenaltyWeight: 5.0,   // Very high — comfort is everything
+            blindsStrategy: 'comfort',   // Keep blinds open for natural light unless critical threat
+            blindsCloseThreshold: 0.8,   // Only close if heat spike > 0.8 (very high threshold)
+            preCoolMinutes: 30,          // Start pre-cooling 30 min early (aggressive)
+            hvacMaxPower: 100,           // Allow full blast
+            hvacMinResponse: 20,         // Always run at least 20% if any deviation
+            targetOvershoot: 0,          // Cool exactly to target, no undershoot
+            displayCostSavings: false,   // Don't show cost — irrelevant to this audience
+            displayComfortScore: true,   // Show PMV comfort gauge prominently
+            acUnitCapacityKW: 5.0,       // Larger AC unit (premium install)
+            colorTheme: '#FFD700'        // Gold accent
+        },
+        economy: {
+            name: '💰 Economy (Cost-Efficient)',
+            description: 'Balanced comfort and cost. Blinds close first. Pre-cool during off-peak.',
+            tempTolerance: 2.0,          // ±2°F — acceptable comfort range
+            energyPenaltyWeight: 0.5,    // High — energy cost matters a lot
+            carbonPenaltyWeight: 0.3,    // Moderate — carbon-conscious
+            comfortPenaltyWeight: 1.0,   // Standard — comfort matters but not at any price
+            blindsStrategy: 'efficiency',// Close blinds aggressively to avoid AC usage
+            blindsCloseThreshold: 0.2,   // Close blinds even for small threats (save energy)
+            preCoolMinutes: 15,          // Pre-cool 15 min early (conservative)
+            hvacMaxPower: 75,            // Cap at 75% to save energy
+            hvacMinResponse: 0,          // Allow AC to fully turn off
+            targetOvershoot: 1.0,        // Allow 1°F undershoot to save energy
+            displayCostSavings: true,    // Show cost savings prominently
+            displayComfortScore: false,  // De-emphasize comfort gauge
+            acUnitCapacityKW: 3.5,       // Standard AC unit
+            colorTheme: '#69f0ae'        // Green accent (eco)
+        }
+    },
+
+    ACTIVE_AUDIENCE: 'economy',
+
+    // =====================================================
     //  TWO ENVIRONMENT PRESETS: Household vs Commercial
     // =====================================================
 
@@ -214,4 +259,12 @@ function getActiveConnections() {
 }
 function isCommercialMode() {
     return getActiveEnvironment().isCommercial === true;
+}
+function getActiveAudience() {
+    return CONFIG.AUDIENCE_PROFILES[CONFIG.ACTIVE_AUDIENCE];
+}
+function getProfileLabel() {
+    const env = CONFIG.ACTIVE_ENVIRONMENT === 'household' ? '🏠' : '🏬';
+    const aud = CONFIG.ACTIVE_AUDIENCE === 'premium' ? '💎' : '💰';
+    return `${aud} ${env} ${CONFIG.ACTIVE_AUDIENCE.charAt(0).toUpperCase() + CONFIG.ACTIVE_AUDIENCE.slice(1)} ${CONFIG.ACTIVE_ENVIRONMENT.charAt(0).toUpperCase() + CONFIG.ACTIVE_ENVIRONMENT.slice(1)}`;
 }

@@ -16,13 +16,25 @@ window.addEventListener('DOMContentLoaded', async () => {
     // 3. Instantiate Core Intelligence Modules (Safely checking if teammates finished them)
     initModules();
 
-    // 4. Wire Environment Switcher
+    // 4. Wire Environment & Audience Switchers
     document.getElementById('env-select').addEventListener('change', (e) => {
         CONFIG.ACTIVE_ENVIRONMENT = e.target.value;
         initState();
         initModules();
+        updateProfileBadge();
         console.log(`Switched to: ${getActiveEnvironment().name}`);
     });
+
+    document.getElementById('audience-select').addEventListener('change', (e) => {
+        CONFIG.ACTIVE_AUDIENCE = e.target.value;
+        initState();
+        initModules();
+        updateProfileBadge();
+        console.log(`Switched Audience to: ${getActiveAudience().name}`);
+    });
+
+    // Initial badge update
+    updateProfileBadge();
 
     // 5. Start Simulation Loop
     let lastTime = performance.now();
@@ -79,6 +91,13 @@ function initModules() {
     if (typeof AnomalyDetector !== 'undefined') modules.anomaly = new AnomalyDetector();
     if (typeof PlaybackEngine !== 'undefined') modules.playback = new PlaybackEngine();
     if (typeof DigitalTwinCalibrator !== 'undefined') modules.calibrator = new DigitalTwinCalibrator();
+}
+
+function updateProfileBadge() {
+    const badge = document.getElementById('profile-badge');
+    if (!badge) return;
+    badge.className = `profile-badge ${CONFIG.ACTIVE_AUDIENCE}`;
+    badge.textContent = getProfileLabel();
 }
 
 // ═══════════════════════════════════════════════════════
