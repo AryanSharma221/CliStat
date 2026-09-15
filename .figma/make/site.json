@@ -1,0 +1,10 @@
+{
+  "description": "Streamline project collaboration with an intuitive interface for teams to manage tasks, share files, and track progress effectively.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

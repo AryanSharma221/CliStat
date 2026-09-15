@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Predictive Digital Twin - Climate Adaptive Smart Thermostat</title>
+    <link rel="stylesheet" href="style.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+</head>
+<body>
+    <header class="app-header">
+        <h1>Predictive Digital Twin HVAC System</h1>
+        <div id="weather-badge" class="weather-badge">Loading Weather...</div>
+    </header>
+
+    <div class="dashboard-grid">
+        <main class="sim-view">
+            <div class="canvas-container">
+                <canvas id="sim-canvas" width="1200" height="700"></canvas>
+            </div>
+            
+            <div class="forecast-panel" id="forecast-panel">
+                <h3>Predictive Forecast</h3>
+                <ul id="threat-list"></ul>
+            </div>
+            
+            <div class="sensor-panel" id="sensor-panel">
+                <h3>IoT Sensor Network & Fused Estimate</h3>
+                <div id="sensor-readings"></div>
+                <div id="fused-estimate"></div>
+            </div>
+        </main>
+
+        <aside class="sidebar-right">
+            <section class="control-panel">
+                <h3>System Controls</h3>
+                <div class="control-group">
+                    <label>Mode:</label>
+                    <select id="mode-select">
+                        <option value="bangbang">Standard (Bang-Bang)</option>
+                        <option value="pidff" selected>Predictive (PID + FF)</option>
+                        <option value="mpc">MPC (60m Lookahead)</option>
+                        <option value="rl">RL Agent (Auto)</option>
+                    </select>
+                </div>
+                <div class="control-group">
+                    <label>Time Speed:</label>
+                    <input type="range" id="time-speed" min="1" max="100" value="30">
+                </div>
+                <div class="control-group">
+                    <button id="reset-btn">Reset Simulation</button>
+                    <button id="calibrate-btn">Self-Calibrate Room</button>
+                </div>
+            </section>
+
+            <section class="charts-panel">
+                <h3>Live Analytics</h3>
+                <canvas id="temp-chart" width="400" height="200"></canvas>
+                <canvas id="power-chart" width="400" height="200"></canvas>
+            </section>
+            
+            <section class="sankey-panel">
+                <h3>Energy Flow</h3>
+                <div id="sankey-container">
+                    <canvas id="sankey-canvas" width="370" height="200"></canvas>
+                </div>
+            </section>
+
+            <section class="economics-panel">
+                <h3>Savings & Carbon Tracking</h3>
+                <div id="savings-display">$0.00 saved</div>
+                <div id="carbon-display">0 kg CO₂ avoided</div>
+            </section>
+            
+            <section class="anomaly-panel" id="anomaly-panel">
+                <h3>System Alerts</h3>
+                <ul id="anomaly-list"></ul>
+            </section>
+        </aside>
+    </div>
+
+    <!-- Core Configurations -->
+    <script src="js/config.js"></script>
+    <script src="js/utils.js"></script>
+
+    <!-- Simulation Engine Layer -->
+    <script src="js/renderer.js"></script>
+    <script src="js/sun.js"></script>
+    <script src="js/collision.js"></script>
+    <script src="js/physics.js"></script>
+    <script src="js/heatmap.js"></script>
+    
+    <!-- Intelligence Layer -->
+    <script src="js/predictor.js"></script>
+    <script src="js/occupancy.js"></script>
+    <script src="js/bangbang.js"></script>
+    <script src="js/controller.js"></script>
+    <script src="js/blinds.js"></script>
+    <script src="js/kalman.js"></script>
+    <script src="js/anomaly.js"></script>
+    
+    <!-- Data & API Layer -->
+    <script src="js/weather.js"></script>
+    <script src="js/calibration.js"></script>
+    <script src="js/sankey.js"></script>
+    <script src="js/playback.js"></script>
+    <script src="js/economics.js"></script>
+    <script src="js/sensors.js"></script>
+    
+    <!-- Visualization Layer -->
+    <script src="js/dashboard.js"></script>
+    <script src="js/controls.js"></script>
+
+    <!-- Entry Point -->
+    <script src="js/main.js"></script>
+</body>
+</html>\n
