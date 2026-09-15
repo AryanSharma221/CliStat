@@ -149,17 +149,6 @@ document.addEventListener("DOMContentLoaded", () => {
                     const modeLabel = isPredictive ? 'MPC Predictive (Cost Minimized)' : 'Standard Reactive';
                     
                     window.SimulationAPI.overrideHVAC(avgPower, exchangeKw, modeLabel);
-                    
-                    // Update exact temp in Celsius on Dashboard
-                    const tempEl = document.getElementById('indoor-avg');
-                    if (tempEl) tempEl.innerHTML = avgTemp.toFixed(1) + '<span class="unit">&deg;C</span>';
-                    
-                    const devVal = document.getElementById('deviation-val');
-                    if (devVal) {
-                        const devC = avgTemp - avgTarget;
-                        const sign = devC > 0 ? '+' : '';
-                        devVal.textContent = sign + devC.toFixed(1);
-                    }
                 }
 
                 // Update Q-vectors
