@@ -1,0 +1,90 @@
+THERMODYNAMIC PHYSICS ENGINE - FORMULA DOCUMENTATION
+Author: Harnoor Kant
+
+This document outlines the exact mathematical formulas used in the frontend's local physics engine (found in `js/ui.js`) to simulate the thermal behavior of the digital twin. 
+(Note: Advanced controller logic like MPC and Carbon Intensity calculations are designed to run on the backend).
+
+---------------------------------------------------------
+1. BASELINE ENVIRONMENTAL TEMPERATURE
+---------------------------------------------------------
+The base temperature starts with the live API weather (in Celsius) and applies a seasonal artificial modifier to simulate extreme conditions when requested via the UI dropdown.
+
+Formulas:
+T_base = T_api + Modifier
+  - Summer Modifier: +4.5 °C
+  - Winter Modifier: -11.0 °C
+  - Spring/Fall Modifier: -3.0 °C
+
+---------------------------------------------------------
+2. THERMAL GAINS (SOLAR & OCCUPANCY)
+---------------------------------------------------------
+A. Solar Gain (T_solar)
+The sun contributes heat following an inverted V-curve that peaks at 14:00 (2:00 PM), attenuated by live cloud cover.
+
+Formula:
+Peak_Proximity = |Current_Time - 14.0|
+T_solar_raw = Max(0, 8.0 - (Peak_Proximity * 1.5))
+Cloud_Attenuation = 1.0 - (CloudCover_Percentage / 100 * 0.7)
+T_solar = T_solar_raw * Cloud_Attenuation
+
+B. Occupancy Gain (T_occ)
+Each occupant radiates body heat which mathematically increases the indoor temperature.
+
+Formula: 
+T_occ = Occupant_Count * 0.14 °C
+
+---------------------------------------------------------
+3. HVAC CAPACITY AND HEAT EXCHANGE
+---------------------------------------------------------
+The HVAC system attempts to pull the raw environmental temperature down (or up) to the user's target temperature. It has a physical thermodynamic ceiling (max capacity).
+
+A. Raw Deviation
+Deviation_raw = (T_base + T_solar + T_occ) - T_target
+
+B. HVAC Thermodynamic Limit (ΔT_hvac)
+The HVAC is physically rated to alter the indoor temperature by a maximum of 10.0 °C.
+If |Deviation_raw| <= 10.0:
+    ΔT_hvac = Deviation_raw   (HVAC succeeds perfectly)
+Else:
+    ΔT_hvac = Sign(Deviation_raw) * 10.0   (HVAC runs at 100% and fails to reach target)
+
+C. Heat Exchange (kW)
+The physical energy exchanged to move the air temperature is calculated at 1.08 kW per degree Celsius of required thermal delta.
+Formula:
+Heat_Exchange_kW = -(ΔT_hvac * 1.08)
+
+D. HVAC Power Usage (%)
+Power percentage is linearly scaled based on how much of the HVAC's maximum capacity (10.0 °C delta) is currently being utilized.
+Formula:
+HVAC_Power_% = (|ΔT_hvac| / 10.0) * 100
+
+---------------------------------------------------------
+4. PREDICTED HEAT LOAD
+---------------------------------------------------------
+This represents the physical energy (kW) constantly being dumped into the room by the environment that the HVAC must fight against.
+
+Formulas:
+Solar_Load_kW = (T_solar / 8.0) * 8.5 kW
+Occupancy_Load_kW = Occupant_Count * 0.15 kW
+Total_Predicted_Load_kW = Solar_Load_kW + Occupancy_Load_kW
+
+---------------------------------------------------------
+5. Q-PREDICTED VECTORS
+---------------------------------------------------------
+The UI vector percentages visualize the relative impact of each heat source.
+
+Formulas:
+- Solar Radiation (%): Min(100, (T_solar / 8.0) * 100)
+- Occupancy Gain (%): Min(100, (Occupant_Count / 20.0) * 100)
+- Envelope Drift (%): Min(100, |Final_Deviation_from_Target| * 9.0)
+- Thermal Decay (%): 5% baseline + algorithmic jitter
+
+---------------------------------------------------------
+6. CARBON INTENSITY (BACKEND ARCHITECTURE)
+---------------------------------------------------------
+While the local frontend calculates instantaneous HVAC Power (%), the actual cumulative Energy Economics (Cost + CO2 footprint) are delegated to the backend controller.
+
+Backend Formula Reference:
+Energy_Used_kWh = (HVAC_Power_% / 100) * System_Max_Capacity_kW * Time_Delta
+Carbon_Emitted_kg = Energy_Used_kWh * Carbon_Intensity_Grid_Factor (e.g., 0.4 kg CO2/kWh)
+Cost = Energy_Used_kWh * Time_of_Use_Rate ($/kWh)
