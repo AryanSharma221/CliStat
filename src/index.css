@@ -1,0 +1,39 @@
+@import url('https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,300;0,9..144,400;0,9..144,500;0,9..144,700;1,9..144,300;1,9..144,400&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700&display=swap');
+@import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500&display=swap');
+@import 'tailwindcss';
+
+@theme {
+  --color-cream: #faf6f0;
+  --color-cream-dark: #f2ead8;
+  --color-amber: #d97706;
+  --color-amber-light: #fbbf24;
+  --color-amber-pale: #fef3c7;
+  --color-terracotta: #c2522b;
+  --color-terracotta-light: #e8775a;
+  --color-charcoal: #2c2319;
+  --color-warm-gray: #7a6a58;
+  --color-warm-border: #e8ddd0;
+
+  --font-display: 'Fraunces', Georgia, serif;
+  --font-sans: 'Outfit', system-ui, sans-serif;
+  --font-mono: 'JetBrains Mono', monospace;
+}
+
+* {
+  scrollbar-width: none;
+}
+*::-webkit-scrollbar {
+  display: none;
+}
+
+@keyframes windPulse {
+  0%, 100% { opacity: 0.5; transform: scaleX(1); }
+  50% { opacity: 1; transform: scaleX(1.04); }
+}
+
+body {
+  font-family: var(--font-sans);
+  background-color: #faf6f0;
+  color: #2c2319;
+}
