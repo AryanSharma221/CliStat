@@ -39,6 +39,7 @@ class UIController {
         this.addEventListeners();
         
         // Expose API for backend integration
+        this._backendOverride = false; // flag: backend pushed HVAC data this frame
         window.SimulationAPI = {
             getState: () => this.currentState,
             setTargetTemp: (temp) => {
@@ -56,6 +57,7 @@ class UIController {
             },
             // Allows backend MPC/PID controllers to override local frontend HVAC math
             overrideHVAC: (powerPct, exchangeKw, modeString) => {
+                this._backendOverride = true;
                 this.hvacPower.innerHTML = Math.round(powerPct) + '<span class="unit">%</span>';
                 this.heatExchange.innerHTML = (exchangeKw > 0 ? '+' : '') + parseFloat(exchangeKw).toFixed(2) + '<span class="unit">kW</span>';
                 this.hvacMode.innerHTML = modeString;
@@ -416,21 +418,24 @@ class UIController {
         // Predicted Heat Load
         this.heatLoad.innerHTML = totalHeatLoadKw.toFixed(2) + '<span class="unit">kW</span>';
 
-        // Heat Exchange
-        this.heatExchange.innerHTML = (exchangeKw > 0 ? '+' : '') + exchangeKw.toFixed(2) + '<span class="unit">kW</span>';
-        if (exchangeKw < -0.1) {
-            this.heatExchange.className = 'text-accent';
-            this.hvacMode.innerHTML = `cooling active (${this.weatherData.condition || 'N/A'}) &bull; ${controllerLabel}`;
-        } else if (exchangeKw > 0.1) {
-            this.heatExchange.className = 'text-warning';
-            this.hvacMode.innerHTML = `heating active (${this.weatherData.condition || 'N/A'}) &bull; ${controllerLabel}`;
-        } else {
-            this.heatExchange.className = 'text-success';
-            this.hvacMode.innerHTML = `hvac standby &bull; ${controllerLabel}`;
-        }
+        // Heat Exchange, HVAC Mode, HVAC Power — only write if backend hasn't already
+        if (!this._backendOverride) {
+            this.heatExchange.innerHTML = (exchangeKw > 0 ? '+' : '') + exchangeKw.toFixed(2) + '<span class="unit">kW</span>';
+            if (exchangeKw < -0.1) {
+                this.heatExchange.className = 'text-accent';
+                this.hvacMode.innerHTML = `cooling active (${this.weatherData.condition || 'N/A'}) &bull; ${controllerLabel}`;
+            } else if (exchangeKw > 0.1) {
+                this.heatExchange.className = 'text-warning';
+                this.hvacMode.innerHTML = `heating active (${this.weatherData.condition || 'N/A'}) &bull; ${controllerLabel}`;
+            } else {
+                this.heatExchange.className = 'text-success';
+                this.hvacMode.innerHTML = `hvac standby &bull; ${controllerLabel}`;
+            }
 
-        // HVAC Power
-        this.hvacPower.innerHTML = Math.round(powerPct) + '<span class="unit">%</span>';
+            // HVAC Power
+            this.hvacPower.innerHTML = Math.round(powerPct) + '<span class="unit">%</span>';
+        }
+        this._backendOverride = false; // reset flag for next frame
 
         // --- CARBON FOOTPRINT (dynamic) ---
         if (this.carbonRate) {
