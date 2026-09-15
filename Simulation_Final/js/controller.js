@@ -16,7 +16,7 @@ class FeedForwardPIDController {
         // Expose internals for Algorithm Trace display
         this.lastError = error;
         this.lastP = P; this.lastI = I; this.lastD = D; this.lastFF = FF;
-        return Math.max(0, Math.min(100, P + I + D + FF));
+        return Math.max(-100, Math.min(100, P + I + D + FF));
     }
     reset() { this.integral = 0; this.previousError = 0; }
 }
@@ -81,7 +81,7 @@ class ModelPredictiveController {
 
     generateCandidateSchedules() {
         const schedules = [];
-        const powerLevels = [0, 10, 20, 30, 50, 75, 100];
+        const powerLevels = [-100, -75, -50, -30, -20, -10, 0, 10, 20, 30, 50, 75, 100];
         for (let i = 0; i < 50; i++) {
             const schedule = [];
             for (let s = 0; s < this.steps; s++) {
@@ -130,10 +130,10 @@ class SelfTuningPID {
 }
 
 class RLAgent {
-    constructor(stateSize = 8, actionCount = 7) {
+    constructor(stateSize = 8, actionCount = 13) {
         this.stateSize = stateSize;
         this.actionCount = actionCount;
-        this.actions = [0, 10, 20, 30, 50, 75, 100];
+        this.actions = [-100, -75, -50, -30, -20, -10, 0, 10, 20, 30, 50, 75, 100];
         this.epsilon = 0.3;          
         this.gamma = 0.95;           
         this.learningRate = 0.01;

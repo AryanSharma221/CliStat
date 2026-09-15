@@ -58,7 +58,7 @@ class UIController {
             // Allows backend MPC/PID controllers to override local frontend HVAC math
             overrideHVAC: (powerPct, exchangeKw, modeString, indoorAvgTemp, deviation) => {
                 this._backendOverride = true;
-                this.hvacPower.innerHTML = Math.round(powerPct) + '<span class="unit">%</span>';
+                this.hvacPower.innerHTML = Math.round(Math.abs(powerPct)) + '<span class="unit">%</span>';
                 this.heatExchange.innerHTML = (exchangeKw > 0 ? '+' : '') + parseFloat(exchangeKw).toFixed(2) + '<span class="unit">kW</span>';
                 this.hvacMode.innerHTML = modeString;
                 
@@ -384,13 +384,13 @@ class UIController {
             const ratePerKwh = isPeak ? 8.0 : 4.5; // ₹/kWh
             
             // Smart controller energy
-            const smartPowerKw = (powerPct / 100) * this.maxHvacCapacityKw;
+            const smartPowerKw = (Math.abs(powerPct) / 100) * this.maxHvacCapacityKw;
             this.smartEnergyKwh += smartPowerKw * dtHours;
             this.smartCostRupees += smartPowerKw * dtHours * ratePerKwh;
             this.smartCO2Kg += smartPowerKw * dtHours * this.gridCarbonIntensity;
             
             // Baseline (BangBang) energy — what a dumb thermostat would use
-            const baselinePowerKw = (baselinePower / 100) * this.maxHvacCapacityKw;
+            const baselinePowerKw = (Math.abs(baselinePower) / 100) * this.maxHvacCapacityKw;
             this.baselineEnergyKwh += baselinePowerKw * dtHours;
             this.baselineCostRupees += baselinePowerKw * dtHours * ratePerKwh;
             this.baselineCO2Kg += baselinePowerKw * dtHours * this.gridCarbonIntensity;
@@ -429,13 +429,13 @@ class UIController {
             }
 
             // HVAC Power
-            this.hvacPower.innerHTML = Math.round(powerPct) + '<span class="unit">%</span>';
+            this.hvacPower.innerHTML = Math.round(Math.abs(powerPct)) + '<span class="unit">%</span>';
         }
         // DON'T reset _backendOverride — once the backend takes over, it owns these elements permanently
 
         // --- CARBON FOOTPRINT (dynamic) ---
         if (this.carbonRate) {
-            const currentCarbonKgH = (powerPct / 100) * this.maxHvacCapacityKw * this.gridCarbonIntensity;
+            const currentCarbonKgH = (Math.abs(powerPct) / 100) * this.maxHvacCapacityKw * this.gridCarbonIntensity;
             this.carbonRate.innerHTML = currentCarbonKgH.toFixed(2) + '<span class="unit">kg/h</span>';
             this.carbonRate.className = currentCarbonKgH > 2.0 ? 'text-warning' : (currentCarbonKgH > 0.5 ? '' : 'text-success');
             if (this.carbonStatus) {
