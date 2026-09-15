@@ -6,7 +6,16 @@ document.addEventListener("DOMContentLoaded", () => {
 
     // 2. Build 3D Model from Config Data
     const builder = new HouseBuilder(viewer.scene);
-    builder.build();
+    const envSelect = document.getElementById('environment-select');
+    if (envSelect) {
+        builder.build(envSelect.value);
+        envSelect.addEventListener('change', (e) => {
+            builder.build(e.target.value);
+            console.log("Switched layout to", e.target.value);
+        });
+    } else {
+        builder.build('office');
+    }
 
     // 3. Initialize Environmental Simulation
     const simulation = new EnvironmentSimulation(viewer.scene);
