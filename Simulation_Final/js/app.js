@@ -105,7 +105,12 @@ document.addEventListener("DOMContentLoaded", () => {
                 let avgTarget = 0;
 
                 // Controller Loop
+                // Sync target temp from UI slider
+                const targetTempSlider = document.getElementById('target-temp-slider');
+                const uiTarget = targetTempSlider ? parseFloat(targetTempSlider.value) : 22.0;
+
                 rooms.forEach(room => {
+                    room.targetTempC = uiTarget;
                     const qTotal = (qData && qData.perRoom && qData.perRoom[room.id]) ? qData.perRoom[room.id].total : 0;
                     
                     // True temperature from kalman fusion, or raw physics
@@ -148,7 +153,8 @@ document.addEventListener("DOMContentLoaded", () => {
                     const exchangeKw = -1 * (avgPower / 100) * 5.0; // 5kW max cooling capacity
                     const modeLabel = isPredictive ? 'MPC Predictive (Cost Minimized)' : 'Standard Reactive';
                     
-                    window.SimulationAPI.overrideHVAC(avgPower, exchangeKw, modeLabel);
+                    const dev = avgTemp - avgTarget;
+                    window.SimulationAPI.overrideHVAC(avgPower, exchangeKw, modeLabel, avgTemp, dev);
                 }
 
                 // Update Q-vectors

@@ -56,7 +56,7 @@ class UIController {
                 this.seasonSelect.dispatchEvent(new Event('change'));
             },
             // Allows backend MPC/PID controllers to override local frontend HVAC math
-            overrideHVAC: (powerPct, exchangeKw, modeString) => {
+            overrideHVAC: (powerPct, exchangeKw, modeString, indoorAvgTemp, deviation) => {
                 this._backendOverride = true;
                 this.hvacPower.innerHTML = Math.round(powerPct) + '<span class="unit">%</span>';
                 this.heatExchange.innerHTML = (exchangeKw > 0 ? '+' : '') + parseFloat(exchangeKw).toFixed(2) + '<span class="unit">kW</span>';
@@ -65,6 +65,12 @@ class UIController {
                 if (exchangeKw < -0.1) this.heatExchange.className = 'text-accent';
                 else if (exchangeKw > 0.1) this.heatExchange.className = 'text-warning';
                 else this.heatExchange.className = 'text-success';
+
+                if (indoorAvgTemp !== undefined && deviation !== undefined) {
+                    this.indoorAvg.innerHTML = indoorAvgTemp.toFixed(1) + '<span class="unit">&deg;C</span>';
+                    const sign = deviation > 0 ? '+' : (deviation < 0 ? '-' : '');
+                    this.deviationVal.textContent = sign + Math.abs(deviation).toFixed(1);
+                }
             }
         };
 
@@ -397,13 +403,13 @@ class UIController {
         //  UPDATE DASHBOARD
         // =====================================================================
         
-        // Indoor Average
-        this.indoorAvg.innerHTML = indoorTemp.toFixed(1) + '<span class="unit">&deg;C</span>';
-
-        // Deviation
-        const finalDeviation = indoorTemp - targetTemp;
-        const sign = finalDeviation > 0 ? '+' : (finalDeviation < 0 ? '-' : '');
-        this.deviationVal.textContent = sign + Math.abs(finalDeviation).toFixed(1);
+        // Indoor Average & Deviation — only write if backend hasn't taken over
+        if (!this._backendOverride) {
+            this.indoorAvg.innerHTML = indoorTemp.toFixed(1) + '<span class="unit">&deg;C</span>';
+            const finalDeviation = indoorTemp - targetTemp;
+            const sign = finalDeviation > 0 ? '+' : (finalDeviation < 0 ? '-' : '');
+            this.deviationVal.textContent = sign + Math.abs(finalDeviation).toFixed(1);
+        }
 
         // Predicted Heat Load
         this.heatLoad.innerHTML = totalHeatLoadKw.toFixed(2) + '<span class="unit">kW</span>';
