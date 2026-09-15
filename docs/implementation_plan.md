@@ -91,6 +91,7 @@ climate-thermostat/
 - [ ] Time display updating in the corner
 - [ ] Time speed slider changes simulation speed
 - [ ] Reset button resets to 6:00 AM
+- [ ] Environment dropdown switches between 🏠 Room, 🏢 Building, and 🏬 Office presets — rooms redraw instantly
 
 ---
 
@@ -251,7 +252,7 @@ climate-thermostat/
 | 3. **"Here's the intelligence."** | 60s | "We calculate heat across 5 vectors: Solar, Occupancy, Envelope, Humidity, and Thermal Decay. Then we run it through a Kalman Filter to handle sensor noise." | Point at Q-breakdown chart. Point at sensor panel showing raw vs fused estimate. Point at the thermal heatmap showing heat radiating from the sofa. |
 | 4. **"Real-world impact."** | 45s | "The predictive mode saved \$2.47 today. That's \$900 projected annually. It also avoided 1.2 kg of CO₂ — equivalent to planting 21 trees." | Point at Savings Panel. Point at Sankey diagram: most heat goes to "Blinds Blocked" instead of "Retained Heat". |
 | 5. **"Self-learning."** | 45s | "Switch to MPC mode — now the system looks 60 minutes ahead and optimizes the entire HVAC schedule. We also have a Reinforcement Learning agent and Self-Tuning PID that learn autonomously." | Switch to MPC mode. Briefly mention RL and Self-Tuning. Click Calibrate to show digital twin learning. |
-| 6. **"All in-browser."** | 30s | "This entire system is 24 JavaScript files. Zero dependencies. Zero servers. Runs on any laptop. Deployed to GitHub Pages in 30 seconds." | Show the live Weather API badge. Open browser DevTools briefly to show no npm/build. |
+| 6. **"It works everywhere."** | 45s | "This system isn't hardcoded for one room. Watch — I'll switch from a studio apartment to a business office with a server room generating heat 24/7. The AI adapts instantly. And it's all 24 vanilla JS files, zero servers, deployable to GitHub Pages in 30 seconds." | Click Environment dropdown → switch to 🏬 Office. Point at Server Closet staying at 65°F. Switch to 🏠 Room. Show sun-sofa collision in simple view. Open DevTools briefly — no npm. |
 
 ### Demo Prep Tasks
 
@@ -418,3 +419,6 @@ If running behind schedule, cut features in this exact order:
 | 14 | Sankey Diagram | `sankey.js` | 4 | A | 🟡 |
 | — | UI Controls (11 controls) | `controls.js` | 4 | B | 🔴 |
 | 15 | Historical Playback | `playback.js` | 4 | B | 🟡 |
+| T6 | Multi-Environment Presets | `config.js` | 1 | B | 🔴 |
+| T6 | Environment Switcher UI | `controls.js`, `index.html` | 1 | A | 🔴 |
+| T6 | Environment-Aware Init | `main.js` | 1 | B | 🔴 |

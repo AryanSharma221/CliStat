@@ -33,12 +33,30 @@
                 <div id="sensor-readings"></div>
                 <div id="fused-estimate"></div>
             </div>
-        </main>
+
+            <div class="occupancy-panel" id="occupancy-panel">
+                <h3>Occupancy Intelligence</h3>
+                <div class="occ-signals">
+                    <div class="occ-signal"><span class="occ-icon">📶</span> WiFi Devices: <span id="occ-wifi">0</span></div>
+                    <div class="occ-signal"><span class="occ-icon">🔊</span> Noise Level: <span id="occ-noise">30</span> dB</div>
+                    <div class="occ-signal"><span class="occ-icon">💡</span> Lights On: <span id="occ-lights">0</span></div>
+                    <div class="occ-signal"><span class="occ-icon">🌀</span> Fans On: <span id="occ-fans">0</span></div>
+                    <div class="occ-signal"><span class="occ-icon">🖥️</span> Monitors On: <span id="occ-monitors">0</span></div>
+                </div>
+                <div id="occ-fused" class="occ-fused">Fused Estimate: 0 people</div>
+            </div>
 
         <!-- Controls and Real-time Analytics -->
         <aside class="sidebar-right">
             <section class="control-panel">
                 <h3>System Controls</h3>
+                <div class="control-group">
+                    <label>Environment:</label>
+                    <select id="env-select">
+                        <option value="household" selected>🏠 Household (Apartment)</option>
+                        <option value="commercial">🏬 Commercial (Office)</option>
+                    </select>
+                </div>
                 <div class="control-group">
                     <label>Mode:</label>
                     <select id="mode-select">

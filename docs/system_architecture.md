@@ -1431,63 +1431,130 @@ class IoTSensorNetwork {
 
 ---
 
-## 4. Multi-Room Configuration (The Digital Twin Data)
+## 4. Multi-Environment Configuration (Switchable Presets)
+
+The system supports **three distinct environment presets** that can be switched live during the demo via a dropdown. Each preset defines a completely different room topology, furniture layout, window orientations, and inter-room thermal connections. The physics engine, controllers, and all visualizations adapt instantly on switch.
+
+### Why This Matters for Judges
+A single-room demo proves the math works. A **multi-environment live switch** proves the system is **universally deployable** — residential, commercial, industrial — without changing a single line of code.
+
+---
+
+### Preset 1: 🏠 Single Room (Studio Apartment)
+- **Use Case:** Compact residential space. Ideal for demonstrating core solar-furniture collision physics in isolation.
+- **Layout:** One large west-facing room (600×450px) with 2 windows (west + south).
+- **Furniture:**
+
+| Object | Thermal Mass ($C_{thermal}$) | Why It Matters |
+|--------|-----|------|
+| Dark Leather Sofa | 0.90 | Absorbs and radiates heat for hours. Primary threat object. |
+| Wooden Desk | 0.55 | Moderate heat absorber near window. |
+| Dark Area Rug | 0.75 | Large surface area, traps floor-level heat. |
+| TV Console | 0.30 | Low mass, heats/cools quickly. |
+| Queen Bed | 0.60 | Significant thermal battery. |
+
+- **Thermal Connections:** None (single zone). All heat stays in one room.
+- **Demo Story:** *"Watch the sun move across a studio apartment. The dark sofa absorbs heat like a battery and the AI pre-closes the blinds before it even gets warm."*
+
+---
+
+### Preset 2: 🏢 Residential Building (3-Room Apartment)
+- **Use Case:** Multi-zone residential. Demonstrates inter-room thermal diffusion and per-zone independent control.
+- **Layout:**
+  - **Living Room** — west-facing, 400×300px, 1 window
+  - **Bedroom** — east-facing, 350×250px, 1 window
+  - **Kitchen** — north-facing, 350×250px, 1 window
+- **Furniture:**
+
+| Room | Objects | Notable Thermal Mass |
+|------|---------|---------------------|
+| Living Room | Dark Sofa (0.90), Glass Table (0.15), Dark Rug (0.75) | Sofa is primary heat sink |
+| Bedroom | Bed Frame (0.55), Dark Curtains (0.65) | Curtains absorb morning sun |
+| Kitchen | Granite Counter (0.70), Refrigerator (0.30) | Granite stores cooking heat |
+
+- **Thermal Connections:**
+
+| Connection | Type | Conductance | Effect |
+|-----------|------|------------|--------|
+| Living Room ↔ Bedroom | Shared wall | 0.15 (low) | Slow heat bleed through drywall |
+| Living Room ↔ Kitchen | Open doorway | 0.60 (high) | Rapid air mixing when door open |
+| Bedroom ↔ Kitchen | Shared wall | 0.15 (low) | Slow heat bleed |
+
+- **Demo Story:** *"Heat enters the living room via the west-facing window. Watch the heatmap show it slowly diffusing through the wall into the bedroom. The AI cools only the affected zones."*
+
+---
+
+### Preset 3: 🏬 Business Office (Open Plan + Server Room)
+- **Use Case:** Commercial HVAC with high-occupancy stochastic modeling and **constant internal heat sources** (servers). This is the hardest challenge for the AI.
+- **Layout:**
+  - **Open-Plan Floor** — south-facing, 700×350px, 2 large window banks (300px each)
+  - **Glass Meeting Room** — south-facing, 250×200px, 1 window
+  - **Server Closet** — no windows, 250×180px, target temp 65°F (critical!)
+- **Furniture:**
+
+| Room | Objects | Thermal Mass | Special Property |
+|------|---------|-------------|-----------------|
+| Open Floor | 2× Desk Clusters (16 desks) | 0.45 each | High occupancy heat |
+| Open Floor | Dark Office Carpet | 0.80 | Massive floor-level heat trap |
+| Open Floor | Printer & Copier | 0.35 | Intermittent internal heat source |
+| Meeting Room | Conference Table | 0.70 | Absorbs afternoon sun deeply |
+| Meeting Room | Ceiling Projector | 0.10 | Negligible |
+| **Server Closet** | **2× Server Racks** | **0.95 each** | **Pre-loaded storedHeat = 0.5 (24/7 heat generation!)** |
+| **Server Closet** | **UPS Battery Bank** | **0.40** | **Pre-loaded storedHeat = 0.2** |
+
+- **Thermal Connections:**
+
+| Connection | Type | Effect |
+|-----------|------|--------|
+| Open Floor ↔ Meeting Room | Glass door | Rapid air mixing (0.60) |
+| Open Floor ↔ Server Room | Insulated wall | Slow heat leakage (0.15) — but servers generate constant internal heat |
+
+- **Critical Challenge:** The server room has **no windows** and **no solar input**, but generates heat 24/7 from the server racks (storedHeat is pre-loaded). The AI must keep it at 65°F or the servers overheat. This means the HVAC must run in the server room even when the rest of the office is comfortable.
+- **Demo Story:** *"This is a real-world commercial challenge. The server room generates heat 24/7 — no sun needed. The AI must simultaneously cool the sun-blasted open floor AND the server closet, with different strategies for each zone."*
+
+---
+
+### Environment Switching Implementation
 
 ```javascript
-const ROOMS = [
-    {
-        id: 'living_room',
-        label: 'Living Room',
-        facing: 'west',
-        bbox: { x: 50, y: 50, width: 400, height: 300 },
-        targetTempF: 72,
-        tempF: 72,
-        windows: [
-            { id: 'lr_win1', x: 50, y: 50, width: 150, facing: 'west', blindState: 'open' }
-        ],
-        objects: [
-            { id: 'dark_sofa', label: 'Dark Leather Sofa', bbox: { x: 150, y: 200, width: 180, height: 80 }, color: '#3B2F2F', thermalMass: 0.90, storedHeat: 0 },
-            { id: 'glass_table', label: 'Glass Coffee Table', bbox: { x: 350, y: 220, width: 80, height: 50 }, color: '#B0E0E6', thermalMass: 0.15, storedHeat: 0 },
-            { id: 'dark_rug', label: 'Dark Area Rug', bbox: { x: 120, y: 250, width: 200, height: 80 }, color: '#2F1B14', thermalMass: 0.75, storedHeat: 0 },
-        ]
-    },
-    {
-        id: 'bedroom',
-        label: 'Bedroom',
-        facing: 'east',
-        bbox: { x: 500, y: 50, width: 350, height: 250 },
-        targetTempF: 70,
-        tempF: 72,
-        windows: [
-            { id: 'br_win1', x: 500, y: 50, width: 120, facing: 'east', blindState: 'open' }
-        ],
-        objects: [
-            { id: 'wood_bed', label: 'Wooden Bed Frame', bbox: { x: 570, y: 100, width: 160, height: 120 }, color: '#8B4513', thermalMass: 0.55, storedHeat: 0 },
-            { id: 'dark_curtains', label: 'Dark Curtains', bbox: { x: 500, y: 50, width: 30, height: 100 }, color: '#1a1a2e', thermalMass: 0.65, storedHeat: 0 },
-        ]
-    },
-    {
-        id: 'kitchen',
-        label: 'Kitchen',
-        facing: 'north',
-        bbox: { x: 50, y: 400, width: 350, height: 250 },
-        targetTempF: 72,
-        tempF: 72,
-        windows: [
-            { id: 'kt_win1', x: 50, y: 400, width: 100, facing: 'north', blindState: 'open' }
-        ],
-        objects: [
-            { id: 'granite_counter', label: 'Granite Counter', bbox: { x: 100, y: 450, width: 200, height: 40 }, color: '#2F4F4F', thermalMass: 0.70, storedHeat: 0 },
-            { id: 'steel_fridge', label: 'Steel Refrigerator', bbox: { x: 330, y: 420, width: 50, height: 80 }, color: '#C0C0C0', thermalMass: 0.30, storedHeat: 0 },
-        ]
-    }
-];
+// In config.js — All 3 presets stored in CONFIG.ENVIRONMENTS
+CONFIG.ENVIRONMENTS = {
+    room:     { name: '🏠 Single Room', rooms: [...], connections: [] },
+    building: { name: '🏢 Residential',  rooms: [...], connections: [...] },
+    office:   { name: '🏬 Office',       rooms: [...], connections: [...] }
+};
+CONFIG.ACTIVE_ENVIRONMENT = 'building'; // default
 
-const ROOM_CONNECTIONS = [
-    { roomA: 'living_room', roomB: 'bedroom',  type: 'wall', area: 15 },
-    { roomA: 'living_room', roomB: 'kitchen',   type: 'door', area: 3  },
-    { roomA: 'bedroom',     roomB: 'kitchen',   type: 'wall', area: 10 },
-];
+// Helper functions (global)
+function getActiveEnvironment() {
+    return CONFIG.ENVIRONMENTS[CONFIG.ACTIVE_ENVIRONMENT];
+}
+function getActiveRooms() {
+    return JSON.parse(JSON.stringify(getActiveEnvironment().rooms)); // Deep copy
+}
+function getActiveConnections() {
+    return getActiveEnvironment().connections;
+}
+
+// UI Switcher Event (in main.js)
+document.getElementById('env-select').addEventListener('change', (e) => {
+    CONFIG.ACTIVE_ENVIRONMENT = e.target.value;
+    initState();   // Re-initialize all room state from new preset
+    initModules(); // Re-create controller instances for new window count
+    console.log(`Switched to: ${getActiveEnvironment().name}`);
+});
+```
+
+### HTML Dropdown (in index.html control panel)
+```html
+<div class="control-group">
+    <label>Environment:</label>
+    <select id="env-select">
+        <option value="room">🏠 Single Room (Studio)</option>
+        <option value="building" selected>🏢 Residential (3-Room)</option>
+        <option value="office">🏬 Business Office</option>
+    </select>
+</div>
 ```
 
 ---
@@ -2111,6 +2178,7 @@ function simulationTick(timestamp) {
 | T3 | Electricity Cost + Carbon Tracker | economics.js (M14) | `EconomicsTracker` | ✅ |
 | T4 | Cloud Cover Integration | sun.js (M2) | `getSunIntensity(hour, cloud)` | ✅ |
 | T5 | Smart Blind Control | blinds.js (M8) | `SmartBlindController` | ✅ |
+| T6 | Multi-Environment Presets (Room/Building/Office) | config.js, main.js, controls.js | `CONFIG.ENVIRONMENTS`, `getActiveEnvironment()` | ✅ |
 
 ---
 
