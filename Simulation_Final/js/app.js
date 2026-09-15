@@ -114,7 +114,7 @@ document.addEventListener("DOMContentLoaded", () => {
                     const qTotal = (qData && qData.perRoom && qData.perRoom[room.id]) ? qData.perRoom[room.id].total : 0;
                     
                     // True temperature from kalman fusion, or raw physics
-                    const currentTempC = fusedEstimates[room.id] !== undefined ? fusedEstimates[room.id] : room.tempC;
+                    const currentTempC = fusedEstimates[room.id] !== undefined ? (fusedEstimates[room.id].estimate || room.tempC) : room.tempC;
                     
                     let power = 0;
                     if (isPredictive && mpcController) {
