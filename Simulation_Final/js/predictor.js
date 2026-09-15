@@ -45,8 +45,9 @@ function calculateQPredicted(intersections, sunIntensity, occupancyModel, weathe
     const occupancyLoad = expectedOccupants * physics.ASHRAE_METABOLIC_HEAT;
 
     // Vector 3: Envelope Load (heat leaking in from outside through walls/windows)
-    const avgIndoorTemp = allRooms.reduce((sum, r) => sum + r.tempF, 0) / allRooms.length;
-    const deltaT = Math.max(0, weather.outdoorTempF - avgIndoorTemp);
+    const avgIndoorTemp = allRooms.reduce((sum, r) => sum + r.tempC, 0) / allRooms.length;
+    const outdoorTemp = weather.outdoorTempC !== undefined ? weather.outdoorTempC : (weather.outdoorTempF ? (weather.outdoorTempF - 32) * 5/9 : 20.0);
+    const deltaT = outdoorTemp - avgIndoorTemp;
     const envelopeLoad = physics.U_ENVELOPE * physics.A_ENVELOPE * deltaT;
 
     // Vector 4: Latent Humidity Load

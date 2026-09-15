@@ -81,7 +81,7 @@ document.addEventListener("DOMContentLoaded", () => {
                 // Calculate Q_predicted (5-vectors)
                 let qData = null;
                 if (typeof calculateQPredictedAllRooms !== 'undefined') {
-                    const weather = { outdoorTempC: 30, humidity: 45, hourOfDay: time };
+                    const weather = { outdoorTempC: window.currentOutdoorTemp || 25, humidity: 45, hourOfDay: time };
                     const occModel = (typeof defaultOccupancyModel !== 'undefined') ? defaultOccupancyModel : null;
                     qData = calculateQPredictedAllRooms(intersections, sunIntensity, occModel, weather, rooms, dt);
                 }

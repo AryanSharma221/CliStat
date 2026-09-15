@@ -188,11 +188,22 @@ class UIController {
             this.updateStats();
         });
 
-        // Target Temp Slider
+        // Target Temp Slider & Input
+        this.targetTempInput = document.getElementById('target-temp-input');
+        
         this.targetTempSlider.addEventListener('input', (e) => {
             this.targetTempVal.textContent = parseFloat(e.target.value).toFixed(1);
+            if (this.targetTempInput) this.targetTempInput.value = e.target.value;
             this.updateStats();
         });
+        
+        if (this.targetTempInput) {
+            this.targetTempInput.addEventListener('input', (e) => {
+                this.targetTempVal.textContent = parseFloat(e.target.value).toFixed(1);
+                this.targetTempSlider.value = e.target.value;
+                this.updateStats();
+            });
+        }
 
         // Play/Pause
         this.playPauseBtn.addEventListener('click', () => {
@@ -297,6 +308,7 @@ class UIController {
             if (day >= 150 && day <= 240) baseTemp = 26.0;
             else if (day < 60 || day > 300) baseTemp = 15.0;
         }
+        window.currentOutdoorTemp = baseTemp;
 
         // --- 2. SOLAR GAIN (5-vector Q_predicted approach) ---
         // Use getSunIntensity() from sun.js for cloud-attenuated solar curve
