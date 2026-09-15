@@ -1,0 +1,166 @@
+THERMODYNAMIC PHYSICS ENGINE - FORMULA DOCUMENTATION (v2)
+Author: Harnoor Kant (3D Visualization & UI)
+AI Controllers: Aryan Sharma (PID, MPC, RL, Kalman, Anomaly Detection)
+Backend & Node.js: Chinmay Gupta
+
+This document outlines the exact mathematical formulas used in the
+simulation's physics engine to model thermal behavior.
+
+=================================================================
+1. BASELINE ENVIRONMENTAL TEMPERATURE
+=================================================================
+Starts with live Chennai weather (OpenWeatherMap API, metric units)
+and applies seasonal modifiers for the UI dropdown.
+
+T_base = T_api + SeasonalModifier
+  Summer (day 150-240):  +4.5 °C
+  Winter (day <60, >300): -11.0 °C
+  Spring/Fall:            -3.0 °C
+
+Fallback (no API): Summer=26°C, Winter=15°C, Default=21°C
+
+=================================================================
+2. FIVE-VECTOR Q_PREDICTED HEAT LOAD
+=================================================================
+Based on architecture §3 Module 5. Each vector is computed in kW
+and converted to temperature gain via thermal capacitance.
+
+A. Solar Load (Q_solar)
+   Uses getSunIntensity() from sun.js for cloud-attenuated curve:
+   
+   baseSolar = sin((hour - 6) / 12 × π)      [0..1, peaks at noon]
+   cloudFactor = 1 - (cloudCover% / 100) × 0.85
+   sunIntensity = baseSolar × cloudFactor
+   
+   Q_solar = sunIntensity × WindowArea × SHGC × SolarIrradiance
+   
+   Parameters:
+   - WindowArea = 8.0 m² (total glazing)
+   - SHGC = 0.4 (Solar Heat Gain Coefficient)
+   - SolarIrradiance = 1000 W/m² (standard peak)
+   
+   Result: 0 to ~1.28 kW at clear-sky noon
+
+B. Occupancy Load (Q_occupancy)
+   ASHRAE 55 standard: seated person ≈ 120W metabolic heat
+   
+   Q_occupancy = OccupantCount × 0.12 kW/person
+
+C. Envelope Load (Q_envelope)
+   Heat leaking through building envelope from outdoor temperature:
+   
+   Q_envelope = U × A × max(0, T_outdoor - T_target) / 1000
+   
+   Parameters:
+   - U = 0.35 W/(m²·K) — insulation factor
+   - A = 45 m² — building envelope area
+   
+D. Thermal Decay (Q_decay)
+   Stored heat from previously irradiated furniture re-radiating:
+   
+   Q_decay = Q_solar × 0.08 (8% re-radiation fraction)
+
+E. Total Predicted Heat Load
+   Q_total = Q_solar + Q_occupancy + Q_envelope + Q_decay
+
+   Temperature gain via thermal capacitance (C = 100 kJ/°C):
+   ΔT_gain = (Q_total / C_thermal) × 3600  [°C per hour]
+
+=================================================================
+3. Q-VECTOR DISPLAY (Dashboard Percentages)
+=================================================================
+Each vector shows its PROPORTIONAL contribution to total load:
+
+Solar%    = (Q_solar / Q_total) × 100
+Occupancy%= (Q_occupancy / Q_total) × 100
+Envelope% = (Q_envelope / Q_total) × 100
+Decay%    = (Q_decay / Q_total) × 100
+
+These sum to 100%, showing judges the actual breakdown of where
+heat is coming from.
+
+=================================================================
+4. HVAC CONTROLLER ALGORITHMS
+=================================================================
+
+A. Vision Predictive Mode — Feed-Forward PID Controller
+   
+   error = T_current - T_target
+   P = Kp × error                        [Proportional]
+   I = Ki × Σ(error × dt)                [Integral, clamped ±50]
+   D = Kd × (error - prevError) / dt     [Derivative]
+   FF = Kff × Q_predicted                [Feed-Forward]
+   
+   Output = clamp(P + I + D + FF, 0, 100)  [% power]
+   
+   Tuning: Kp=1.5, Ki=0.1, Kd=0.05, Kff=0.2
+   
+   The feed-forward term is the key innovation: it uses the
+   predicted heat load to PRE-COMPENSATE before the error grows,
+   rather than waiting to react (like a standard PID).
+
+B. Standard Reactive Mode — Bang-Bang Controller
+   Simple on/off with hysteresis deadband:
+   
+   if T_current > T_target + 0.5: power = 100%
+   if T_current ≤ T_target - 0.5: power = 0%
+   else: maintain previous state
+   
+   This is the "dumb thermostat" baseline for comparison.
+
+=================================================================
+5. HVAC CAPACITY AND HEAT EXCHANGE
+=================================================================
+
+A. HVAC Thermodynamic Limit
+   Max capacity: 5.0 kW (≈1.5-ton AC unit)
+   Max temperature pull: 10.0°C
+   
+   maxHvacPull = 10.0 × (powerPct / 100)
+   
+   if |Deviation| ≤ maxHvacPull:
+       ΔT_hvac = Deviation        (HVAC succeeds)
+   else:
+       ΔT_hvac = sign × maxHvacPull  (HVAC at capacity)
+
+B. Heat Exchange (kW)
+   exchangeKw = -(ΔT_hvac × maxCapacity / maxDelta)
+   exchangeKw = -(ΔT_hvac × 0.5)  [kW per °C]
+
+=================================================================
+6. ENERGY & CARBON ECONOMICS
+=================================================================
+
+A. Energy Consumption
+   E_smart    = Σ (powerPct/100 × maxCapacity × Δt_hours)  [kWh]
+   E_baseline = Σ (bangbangPct/100 × maxCapacity × Δt_hours) [kWh]
+
+B. Cost (Time-of-Use Pricing, India)
+   Peak rate (4pm-9pm):    ₹8.0/kWh
+   Off-peak rate:          ₹4.5/kWh
+   
+   Cost = E × rate_at_time
+
+C. Carbon Footprint
+   Grid intensity: 0.82 kg CO₂/kWh (India average)
+   
+   CO₂ = E × 0.82  [kg]
+
+D. Savings
+   Energy saved = ((E_baseline - E_smart) / E_baseline) × 100  [%]
+   Cost saved   = Cost_baseline - Cost_smart  [₹]
+   CO₂ avoided  = CO₂_baseline - CO₂_smart  [kg]
+
+=================================================================
+7. ADDITIONAL AI MODULES (Available)
+=================================================================
+
+- ModelPredictiveController: Horizon optimization (12 steps, 60min)
+  evaluates 52 candidate power schedules and picks lowest-cost
+- SelfTuningPID: Gradient descent auto-tuning of PID gains
+- RLAgent: Q-learning reinforcement agent with state discretization
+- KalmanFilter: Sensor noise filtering (process noise q=0.02)
+- MultiSensorFusion: Weighted fusion of multiple temperature sensors
+- AnomalyDetector: Detects open windows, unexpected heat, HVAC degradation
+- SmartBlindController: Predictive blind closing based on solar forecast
+- StochasticOccupancyModel: 4-signal fusion (WiFi, noise, appliances, time)
