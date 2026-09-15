@@ -289,15 +289,9 @@ class UIController {
         const SHGC = 0.4;       // Solar Heat Gain Coefficient
         const solarIrradiance = 1000; // W/m² peak (standard)
         const qSolarKw = sunIntensity * windowArea * SHGC * solarIrradiance / 1000;
-        
-        // Convert solar kW to temperature gain via thermal capacitance
-        // C_thermal ≈ 100 kJ/°C for a typical room (air + furniture)
-        const thermalCapacitance = 100; // kJ/°C
-        const solarGainDegC = (qSolarKw / thermalCapacitance) * 3600; // °C per hour, displayed as instant offset
 
         // --- 3. OCCUPANCY HEAT GAIN (ASHRAE 55: 120W per person) ---
         const qOccupancyKw = this.settings.occupancy * 0.12; // kW (CONFIG.PHYSICS.ASHRAE_METABOLIC_HEAT)
-        const occGainDegC = (qOccupancyKw / thermalCapacitance) * 3600;
 
         // --- 4. ENVELOPE LOAD (heat leaking through walls from outdoor temp) ---
         const outdoorTemp = baseTemp;
@@ -305,15 +299,18 @@ class UIController {
         const A_envelope = 45;     // m² — CONFIG.PHYSICS.A_ENVELOPE
         const deltaT_envelope = Math.max(0, outdoorTemp - targetTemp);
         const qEnvelopeKw = (U_envelope * A_envelope * deltaT_envelope) / 1000;
-        const envelopeGainDegC = (qEnvelopeKw / thermalCapacitance) * 3600;
 
         // --- 5. THERMAL DECAY (stored heat re-radiating from furniture) ---
         const qDecayKw = qSolarKw * 0.08; // 8% of solar load re-radiates as stored heat
-        const decayGainDegC = (qDecayKw / thermalCapacitance) * 3600;
 
         // --- TOTAL PREDICTED HEAT LOAD ---
         const totalHeatLoadKw = qSolarKw + qOccupancyKw + qEnvelopeKw + qDecayKw;
-        const totalGainDegC = solarGainDegC + occGainDegC + envelopeGainDegC + decayGainDegC;
+        
+        // Convert kW heat load → temperature rise using building heat loss coefficient
+        // A typical building loses ~0.5 kW per °C of indoor-outdoor difference
+        // (includes walls, windows, ventilation, infiltration)
+        const buildingHeatLossCoeff = 0.5; // kW/°C
+        const totalGainDegC = totalHeatLoadKw / buildingHeatLossCoeff;
         
         // Raw indoor temperature before any HVAC intervention
         const rawIndoorTemp = baseTemp + totalGainDegC;
