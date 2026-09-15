@@ -233,28 +233,18 @@ class UIController {
         });
 
         // Mode Toggles — NOW ACTUALLY SWITCH CONTROLLERS
-        this.modePredictive.addEventListener('click', () => {
-            this.activeMode = 'predictive';
-            this.modePredictive.classList.add('active');
-            this.modeStandard.classList.remove('active');
-            this.hvacController.reset();
-            // Reset counters to show fresh comparison
-            this.smartEnergyKwh = 0; this.baselineEnergyKwh = 0;
-            this.smartCostRupees = 0; this.baselineCostRupees = 0;
-            this.smartCO2Kg = 0; this.baselineCO2Kg = 0;
-            this.lastSimTime = null;
-        });
-
-        this.modeStandard.addEventListener('click', () => {
-            this.activeMode = 'standard';
-            this.modeStandard.classList.add('active');
-            this.modePredictive.classList.remove('active');
-            // Reset counters to show fresh comparison
-            this.smartEnergyKwh = 0; this.baselineEnergyKwh = 0;
-            this.smartCostRupees = 0; this.baselineCostRupees = 0;
-            this.smartCO2Kg = 0; this.baselineCO2Kg = 0;
-            this.lastSimTime = null;
-        });
+        if (this.modePredictive) {
+            this.modePredictive.addEventListener('click', () => {
+                this.activeMode = 'predictive';
+                this.modePredictive.classList.add('active');
+                this.hvacController.reset();
+                // Reset counters to show fresh comparison
+                this.smartEnergyKwh = 0; this.baselineEnergyKwh = 0;
+                this.smartCostRupees = 0; this.baselineCostRupees = 0;
+                this.smartCO2Kg = 0; this.baselineCO2Kg = 0;
+                this.lastSimTime = null;
+            });
+        }
     }
 
     update(dt) {
