@@ -360,18 +360,15 @@ function HomePage({ scrollTo, setPage }: { scrollTo: (id: string) => void; setPa
         <div className="max-w-5xl mx-auto">
           <p className="text-xs font-[var(--font-mono)] text-[#c2522b] tracking-widest uppercase mb-3">Team</p>
           <h2 className="text-4xl md:text-5xl font-[var(--font-display)] font-semibold mb-16 leading-tight">
-            Built by six<br />
+            Built by three<br />
             <em className="italic font-light">engineers</em>
           </h2>
 
           <div className="flex flex-col">
             {[
-              { name: "Arjun Mehta", role: "Hardware and Sensors", color: "#e8775a" },
-              { name: "Priya Nair", role: "Embedded Systems", color: "#d97706" },
-              { name: "Rohan Das", role: "ML and Prediction", color: "#c2522b" },
-              { name: "Ananya Rao", role: "UI and Dashboard", color: "#fbbf24" },
-              { name: "Kiran Patel", role: "Backend and MQTT", color: "#e8775a" },
-              { name: "Sneha Iyer", role: "Energy Logging", color: "#d97706" },
+              { name: "Chinmay Gupta", role: "UI and Visualization", color: "#e8775a" },
+              { name: "Aryan Sharma", role: "Physics and Environment", color: "#d97706" },
+              { name: "Harnoor Kant", role: "AI and Control Systems", color: "#c2522b" },
             ].map((m, i, arr) => (
               <div
                 key={m.name}
