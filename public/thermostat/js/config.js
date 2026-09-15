@@ -66,8 +66,8 @@ const CONFIG = {
         DOOR_CONDUCTANCE: 0.60,      // heat transfer rate through open doorways
 
         // Safety bounds (verification checklist: no NaN/Infinity, 50-120F range)
-        MIN_TEMP_F: 50,
-        MAX_TEMP_F: 120,
+        MIN_TEMP_C: 10,
+        MAX_TEMP_C: 50,
 
         // 3D geometry defaults — used when a room/window/object doesn't
         // specify its own value. All in the same "world units" as the
@@ -105,7 +105,7 @@ const CONFIG = {
             name: 'Living Room',
             x: 50, y: 50, width: 600, height: 400,
             targetTempF: 72,
-            tempF: 76,                  // initial temperature
+            tempC: 24.5,                  // initial temperature
             // 3D: roomHeight defaults to PHYSICS.DEFAULT_ROOM_HEIGHT if omitted
             windows: [
                 { id: 'w1', x: 50, y: 50, width: 200, height: 10, orientation: 'N', blindState: 'open' },
@@ -123,7 +123,7 @@ const CONFIG = {
             name: 'Master Bedroom',
             x: 700, y: 50, width: 400, height: 300,
             targetTempF: 68,
-            tempF: 74,
+            tempC: 23.5,
             windows: [
                 { id: 'w3', x: 700, y: 50, width: 150, height: 10, orientation: 'N', blindState: 'open' },
                 { id: 'w4', x: 1090, y: 100, width: 10, height: 150, orientation: 'E', blindState: 'open' }
@@ -137,7 +137,7 @@ const CONFIG = {
             name: 'Kitchen',
             x: 700, y: 400, width: 400, height: 250,
             targetTempF: 70,
-            tempF: 75,
+            tempC: 24.0,
             windows: [
                 { id: 'w5', x: 1090, y: 450, width: 10, height: 100, orientation: 'E', blindState: 'open' }
             ],

@@ -13,7 +13,7 @@ if (typeof require === 'function' && typeof module !== 'undefined') {
 
 /**
  * Advances every room's temperature by one timestep `dt` (seconds).
- * Mutates `rooms` in place (sets room.tempF) and also returns the map of
+ * Mutates `rooms` in place (sets room.tempC) and also returns the map of
  * new temperatures, in case a caller wants them before committing.
  */
 function updateMultiRoomTemperatures(rooms, connections, qPredictedPerRoom, hvacPowerPerRoom, dt) {
@@ -38,20 +38,20 @@ function updateMultiRoomTemperatures(rooms, connections, qPredictedPerRoom, hvac
             const otherRoom = rooms.find(r => r.id === otherId);
             if (!otherRoom) continue;
             const conductance = conn.type === 'door' ? physics.DOOR_CONDUCTANCE : physics.WALL_CONDUCTANCE;
-            diffusion += conductance * (otherRoom.tempF - room.tempF) * dt / 3600;
+            diffusion += conductance * (otherRoom.tempC - room.tempC) * dt / 3600;
         }
 
-        let next = room.tempF + heatGain - heatRemoval + diffusion;
+        let next = room.tempC + heatGain - heatRemoval + diffusion;
 
         // Safety guard (verification checklist: no NaN/Infinity, stay in range)
-        if (!Number.isFinite(next)) next = room.tempF;
-        next = Math.min(physics.MAX_TEMP_F, Math.max(physics.MIN_TEMP_F, next));
+        if (!Number.isFinite(next)) next = room.tempC;
+        next = Math.min(physics.MAX_TEMP_C, Math.max(physics.MIN_TEMP_C, next));
 
         newTemps[room.id] = next;
     }
 
     for (const room of rooms) {
-        room.tempF = newTemps[room.id];
+        room.tempC = newTemps[room.id];
     }
     return newTemps;
 }

@@ -27,7 +27,7 @@ class IoTSensorNetwork {
             const room = rooms.find(r => r.id === sensor.roomId);
             if (!room) continue;
 
-            let reading = room.tempF;
+            let reading = room.tempC;
             
             const noise = (Math.random() + Math.random() + Math.random() + Math.random() + Math.random() + Math.random() - 3) / 3;
             reading += noise * 0.5; 
