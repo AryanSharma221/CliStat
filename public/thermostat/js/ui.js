@@ -296,7 +296,7 @@ class UIController {
             this.hvacMode.innerHTML = 'hvac standby &bull; optimal';
         }
 
-        const powerPct = (Math.abs(actualHvacDelta) / maxHvacDelta) * 100;
+        // hvacPower is already computed by the PID controller above (powerPct)
         this.hvacPower.innerHTML = Math.round(powerPct) + '<span class="unit">%</span>';
 
         // --- Q PREDICTED / VECTORS ---
