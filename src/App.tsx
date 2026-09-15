@@ -1,524 +1,477 @@
 import { useState, useEffect } from "react";
-import CursorAir from "./CursorAir";
-import CinematicHero from "./CinematicHero";
 
-
-type Page = "home" | "terms" | "privacy";
-
-const NAV_LINKS = ["Overview", "How It Works", "Features", "Demo", "Team"];
-
-function useAnimatedTemp(target: number, speed = 0.03) {
-  const [val, setVal] = useState(target);
-  useEffect(() => {
-    let raf: number;
-    const step = () => {
-      setVal((v) => {
-        const diff = target - v;
-        if (Math.abs(diff) < 0.05) return target;
-        return v + diff * speed;
-      });
-      raf = requestAnimationFrame(step);
-    };
-    raf = requestAnimationFrame(step);
-    return () => cancelAnimationFrame(raf);
-  }, [target, speed]);
-  return val;
-}
-
-const SCENARIOS = [
-  { label: "Sunny Afternoon", outside: 42, inside: 22, humidity: 38, status: "Cooling Active" },
-  { label: "Cold Morning", outside: 4, inside: 21, humidity: 62, status: "Heating Active" },
-  { label: "Mild Evening", outside: 24, inside: 23, humidity: 55, status: "Balanced" },
-];
-
-function ThermoGauge({ temp, label, accent }: { temp: number; label: string; accent: string }) {
-  const pct = Math.max(0, Math.min(100, ((temp + 10) / 60) * 100));
+// ─── legal pages ──────────────────────────────────────────────────────────────
+function BackBtn({ onClick }: { onClick: () => void }) {
   return (
-    <div className="flex flex-col items-center gap-2">
-      <div className="relative w-14 h-32 flex items-end justify-center">
-        <div className="absolute bottom-0 w-5 rounded-full overflow-hidden" style={{ height: "100%" }}>
-          <div className="w-full bg-white/10 rounded-full" style={{ height: "100%" }}>
-            <div
-              className="w-full rounded-full transition-all duration-700"
-              style={{ height: `${pct}%`, background: accent, marginTop: `${100 - pct}%` }}
-            />
-          </div>
-        </div>
-        <div className="absolute bottom-0 w-10 h-10 rounded-full border-4 border-[#2c2319] z-10" style={{ background: accent }} />
-      </div>
-      <span className="text-xs font-[var(--font-mono)] text-[#7a6a58] tracking-widest uppercase">{label}</span>
-      <span className="text-2xl font-[var(--font-display)] font-semibold text-[#2c2319]">{temp.toFixed(1)}C</span>
-    </div>
-  );
-}
-
-function DemoSection() {
-  return (
-    <section id="Demo" className="py-24 px-6 bg-[#f2ead8]">
-      <div className="max-w-7xl mx-auto">
-        <p className="text-xs font-[var(--font-mono)] text-[#c2522b] tracking-widest uppercase mb-3">Live Simulation</p>
-        <div className="flex flex-col md:flex-row md:items-end justify-between gap-6 mb-14">
-          <h2 className="text-4xl md:text-5xl font-[var(--font-display)] font-semibold text-[#2c2319] leading-tight">
-            Vision-Predictive<br />
-            <em className="font-light italic">Digital Twin</em>
-          </h2>
-        </div>
-
-        <div className="w-full rounded-2xl overflow-hidden shadow-2xl border-4 border-[#2c2319]" style={{ height: "800px" }}>
-          <iframe 
-            src="/Simulation_Final/index.html" 
-            className="w-full h-full"
-            title="Climate Thermostat Simulation"
-          ></iframe>
-        </div>
-      </div>
-    </section>
-  );
-}
-
-function TermsPage({ onBack }: { onBack: () => void }) {
-  useEffect(() => { window.scrollTo(0, 0); }, []);
-  return (
-    <div className="min-h-screen bg-[#faf6f0]">
-      <div className="max-w-3xl mx-auto px-6 py-20">
-        <button onClick={onBack} className="text-sm text-[#7a6a58] hover:text-[#2c2319] transition-colors mb-10 cursor-pointer flex items-center gap-2">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-          Back to ThermoSync
-        </button>
-        <p className="text-xs font-[var(--font-mono)] text-[#c2522b] tracking-widest uppercase mb-3">Legal</p>
-        <h1 className="text-4xl font-[var(--font-display)] font-semibold text-[#2c2319] mb-3">Terms and Conditions</h1>
-        <p className="text-sm text-[#7a6a58] font-[var(--font-mono)] mb-12">Last updated: 14 September 2026</p>
-
-        <div className="prose-like flex flex-col gap-10 text-[#2c2319]">
-          {[
-            {
-              title: "1. Acceptance of Terms",
-              body: "By accessing or using ThermoSync (\"the System\"), including its hardware, firmware, software dashboard, and API, you agree to be bound by these Terms and Conditions. If you do not agree, you must discontinue use immediately. These terms apply to all users, including prototype evaluators, institutional partners, and individual end users.",
-            },
-            {
-              title: "2. Scope of the System",
-              body: "ThermoSync is a thermal regulation system that reads ambient outdoor temperature via sensor nodes and uses a PID control loop to adjust indoor HVAC setpoints automatically. The system is provided as a prototype for evaluation purposes. It is not certified for use in safety-critical environments, medical facilities, or any installation requiring regulatory approval.",
-            },
-            {
-              title: "3. Permitted Use",
-              body: "You may use ThermoSync solely for its intended purpose of indoor climate regulation in residential or office environments. You may not reverse-engineer, resell, sublicense, or modify the firmware or control algorithms without written permission from the ThermoSync development team.",
-            },
-            {
-              title: "4. Data Collection and Sensor Readings",
-              body: "The system collects real-time temperature, humidity, and HVAC state data from installed sensor nodes. This data is processed locally on the edge controller and may be transmitted to the ThermoSync dashboard over an encrypted MQTT connection. No personally identifiable information is collected from sensor readings.",
-            },
-            {
-              title: "5. Limitation of Liability",
-              body: "ThermoSync is a student-developed prototype. The development team makes no warranties, express or implied, regarding system uptime, sensor accuracy, or HVAC compatibility. The team is not liable for any property damage, discomfort, or equipment malfunction arising from system use.",
-            },
-            {
-              title: "6. Intellectual Property",
-              body: "All source code, circuit schematics, firmware, and dashboard designs are the intellectual property of the ThermoSync team. Unauthorized reproduction or distribution is prohibited.",
-            },
-            {
-              title: "7. Modifications to Terms",
-              body: "These terms may be updated as the system evolves. Continued use of ThermoSync after a revision constitutes acceptance of the updated terms. Users will be notified of material changes via the registered contact email.",
-            },
-            {
-              title: "8. Contact",
-              body: "For questions about these terms, contact the ThermoSync team at thermosync@project.dev",
-            },
-          ].map((s) => (
-            <div key={s.title} className="border-t border-[#e8ddd0] pt-8">
-              <h2 className="text-lg font-[var(--font-display)] font-semibold mb-3">{s.title}</h2>
-              <p className="text-[#7a6a58] leading-relaxed text-base">{s.body}</p>
-            </div>
-          ))}
-        </div>
-      </div>
-    </div>
+    <button onClick={onClick} style={{ background: "none", border: "none", cursor: "pointer", color: "var(--text-secondary)", fontSize: 13, display: "flex", alignItems: "center", gap: 6, marginBottom: 48 }}>
+      <svg width="14" height="14" viewBox="0 0 14 14" fill="none"><path d="M9 2L4 7l5 5" stroke="currentColor" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/></svg>
+      Back
+    </button>
   );
 }
 
 function PrivacyPage({ onBack }: { onBack: () => void }) {
-  useEffect(() => { window.scrollTo(0, 0); }, []);
   return (
-    <div className="min-h-screen bg-[#faf6f0]">
-      <div className="max-w-3xl mx-auto px-6 py-20">
-        <button onClick={onBack} className="text-sm text-[#7a6a58] hover:text-[#2c2319] transition-colors mb-10 cursor-pointer flex items-center gap-2">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2"><path d="M19 12H5M12 5l-7 7 7 7"/></svg>
-          Back to ThermoSync
-        </button>
-        <p className="text-xs font-[var(--font-mono)] text-[#c2522b] tracking-widest uppercase mb-3">Legal</p>
-        <h1 className="text-4xl font-[var(--font-display)] font-semibold text-[#2c2319] mb-3">Privacy Policy</h1>
-        <p className="text-sm text-[#7a6a58] font-[var(--font-mono)] mb-12">Last updated: 14 September 2026</p>
-
-        <div className="flex flex-col gap-10 text-[#2c2319]">
-          {[
-            {
-              title: "1. What We Collect",
-              body: "ThermoSync collects the following data through installed sensor nodes: outdoor ambient temperature (degrees Celsius), indoor temperature per zone, relative humidity (%), HVAC actuator state, and timestamped control decisions. No audio, video, biometric, or location data is collected at any time.",
-            },
-            {
-              title: "2. How We Use It",
-              body: "Sensor data is used exclusively to compute HVAC setpoints via the on-device PID controller. Aggregated anonymised readings may be used to improve algorithm performance across deployments. No data is sold, shared with advertisers, or used for any purpose unrelated to thermal regulation.",
-            },
-            {
-              title: "3. Data Storage",
-              body: "All sensor readings are processed locally on the edge microcontroller. If the optional cloud dashboard is enabled, readings are transmitted over TLS-encrypted MQTT to a self-hosted server. Data is retained for a maximum of 90 days unless you request earlier deletion.",
-            },
-            {
-              title: "4. Data Sharing",
-              body: "We do not share personal data with third parties. Anonymised aggregate temperature trends may be shared in academic research papers or project reports without identifying individual installations.",
-            },
-            {
-              title: "5. Your Rights",
-              body: "You may request a full export of all sensor data associated with your installation, or request permanent deletion of your records, by contacting thermosync@project.dev. We will fulfill requests within 14 calendar days.",
-            },
-            {
-              title: "6. Security",
-              body: "Sensor-to-controller communication uses the I2C protocol within a closed hardware enclosure. Dashboard data is encrypted in transit using TLS 1.3. Access to the dashboard requires authentication credentials that are stored using bcrypt hashing.",
-            },
-            {
-              title: "7. Children",
-              body: "ThermoSync is not directed at children under 13. We do not knowingly collect data from minors.",
-            },
-            {
-              title: "8. Changes to This Policy",
-              body: "We will notify registered users by email before making material changes to this policy. Continued use of the system after notification constitutes acceptance.",
-            },
-            {
-              title: "9. Contact",
-              body: "Privacy inquiries can be directed to thermosync@project.dev. Response time is typically 3 to 5 business days.",
-            },
-          ].map((s) => (
-            <div key={s.title} className="border-t border-[#e8ddd0] pt-8">
-              <h2 className="text-lg font-[var(--font-display)] font-semibold mb-3">{s.title}</h2>
-              <p className="text-[#7a6a58] leading-relaxed text-base">{s.body}</p>
-            </div>
-          ))}
-        </div>
+    <div style={{ background: "var(--bg-deep)", minHeight: "100vh", padding: "80px 24px" }}>
+      <div style={{ maxWidth: 720, margin: "0 auto" }}>
+        <BackBtn onClick={onBack} />
+        <p className="label-green" style={{ marginBottom: 12 }}>Legal</p>
+        <h1 className="condensed" style={{ fontSize: 52, color: "var(--text-primary)", marginBottom: 48, lineHeight: 1.05 }}>Privacy Policy</h1>
+        <p className="mono" style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 48 }}>Last updated: September 16, 2026</p>
+        {[
+          { h: "What we collect", b: "This site does not collect personal data. There are no accounts, forms, or tracking cookies. The site runs entirely in your browser and no data is sent to a server." },
+          { h: "Third-party services", b: "No analytics, advertising, or social tracking scripts are used on this site." },
+          { h: "Contact", b: "Questions about this policy can be directed to the project repository on GitHub." },
+        ].map((s, i, arr) => (
+          <section key={s.h} style={{ marginBottom: 40, paddingBottom: 40, borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none" }}>
+            <h2 style={{ fontSize: 20, fontWeight: 600, color: "var(--text-primary)", marginBottom: 12 }}>{s.h}</h2>
+            <p style={{ fontSize: 15, lineHeight: 1.75, color: "var(--text-secondary)" }}>{s.b}</p>
+          </section>
+        ))}
       </div>
     </div>
   );
 }
 
-function HomePage({ scrollTo, setPage }: { scrollTo: (id: string) => void; setPage: (p: Page) => void }) {
-  const FEATURES = [
-    {
-      title: "Adaptive PID Control",
-      desc: "The proportional-integral-derivative controller self-tunes based on your building's thermal mass. Responses grow more accurate with every cycle, no manual calibration needed.",
-      tag: "Control System",
-      img: "https://images.unsplash.com/photo-1581091226825-a6a2a5aee158?w=900&h=600&fit=crop&auto=format",
-    },
-    {
-      title: "Multi-Zone Awareness",
-      desc: "Each room carries independent sensor nodes. Zone-level setpoints are managed separately so one sunny corner never overcools the rest of the floor.",
-      tag: "Multi-Zone",
-      img: "https://images.unsplash.com/photo-1600585154340-be6161a56a0c?w=900&h=600&fit=crop&auto=format",
-    },
-    {
-      title: "Predictive Pre-Conditioning",
-      desc: "Weather API forecasts feed a 15-minute lookahead window. ThermoSync begins adjusting before a temperature spike arrives, not after your comfort drops.",
-      tag: "Predictive",
-      img: "https://images.unsplash.com/photo-1504711434969-e33886168f5c?w=900&h=600&fit=crop&auto=format",
-    },
-    {
-      title: "Energy Logging",
-      desc: "HVAC run-time and state changes are logged per session. You can review when the system activated, for how long, and under what outdoor conditions.",
-      tag: "Logging",
-      img: "https://images.unsplash.com/photo-1551288049-bebda4e38f71?w=900&h=600&fit=crop&auto=format",
-    },
-  ];
-
-  const STEPS = [
-    {
-      num: "01",
-      title: "Sense",
-      desc: "Twelve low-power thermal sensors are installed around the building perimeter. Each node reads outdoor ambient temperature every 800 ms and transmits readings over I2C to the edge controller.",
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <circle cx="12" cy="12" r="3" />
-          <path d="M12 2v3M12 19v3M4.22 4.22l2.12 2.12M17.66 17.66l2.12 2.12M2 12h3M19 12h3M4.22 19.78l2.12-2.12M17.66 6.34l2.12-2.12" />
-        </svg>
-      ),
-      color: "#d97706",
-    },
-    {
-      num: "02",
-      title: "Analyze",
-      desc: "The edge microcontroller aggregates sensor readings and runs a PID control loop. It calculates the required indoor setpoint from the current differential, the rate of change, and a preset comfort threshold.",
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <polyline points="22 12 18 12 15 21 9 3 6 12 2 12" />
-        </svg>
-      ),
-      color: "#c2522b",
-    },
-    {
-      num: "03",
-      title: "Respond",
-      desc: "The new setpoint publishes to HVAC actuators over MQTT. The system activates cooling, heating, or ventilation within the current polling cycle. Occupants notice the result, not the process.",
-      icon: (
-        <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="1.5">
-          <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14" />
-          <polyline points="22 4 12 14.01 9 11.01" />
-        </svg>
-      ),
-      color: "#e8775a",
-    },
-  ];
-
+function TermsPage({ onBack }: { onBack: () => void }) {
   return (
-    <>
-      {/* Cinematic Hero — first page only */}
-      <CinematicHero onScrollDown={() => document.getElementById("How It Works")?.scrollIntoView({ behavior: "smooth" })} />
-
-      {/* What it does strip */}
-      <section id="Overview" className="px-6 max-w-6xl mx-auto">
-        <div className="border-t border-b border-[#e8ddd0] py-8 grid md:grid-cols-3 gap-8">
-          <div>
-            <p className="text-xs font-[var(--font-mono)] text-[#c2522b] tracking-widest uppercase mb-2">What it detects</p>
-            <p className="text-[#2c2319] leading-relaxed">Outdoor ambient temperature from 12 sensor nodes sampled every 800 ms over I2C.</p>
-          </div>
-          <div>
-            <p className="text-xs font-[var(--font-mono)] text-[#c2522b] tracking-widest uppercase mb-2">How it decides</p>
-            <p className="text-[#2c2319] leading-relaxed">A PID control loop on an ESP32 edge controller computes the optimal indoor setpoint continuously.</p>
-          </div>
-          <div>
-            <p className="text-xs font-[var(--font-mono)] text-[#c2522b] tracking-widest uppercase mb-2">What it controls</p>
-            <p className="text-[#2c2319] leading-relaxed">HVAC actuators receive updated setpoints over MQTT within the current polling cycle.</p>
-          </div>
-        </div>
-      </section>
-
-      {/* How it works */}
-      <section id="How It Works" className="py-24 px-6 bg-[#2c2319] text-[#faf6f0]">
-        <div className="max-w-5xl mx-auto">
-          <p className="text-xs font-[var(--font-mono)] text-[#d97706] tracking-widest uppercase mb-3">Process</p>
-          <h2 className="text-4xl md:text-5xl font-[var(--font-display)] font-semibold mb-20 leading-tight">
-            Sense, analyze,<br />
-            <em className="italic font-light text-[#e8775a]">then act</em>
-          </h2>
-
-          <div className="relative">
-            <div className="absolute left-5 top-5 bottom-5 w-px bg-gradient-to-b from-[#d97706]/50 via-[#e8775a]/30 to-transparent hidden md:block" />
-            <div className="flex flex-col gap-0">
-              {STEPS.map((step, i) => (
-                <div key={step.num} className="relative flex gap-10 md:gap-16">
-                  <div className="flex flex-col items-center flex-shrink-0">
-                    <div
-                      className="w-10 h-10 flex items-center justify-center z-10 flex-shrink-0"
-                      style={{ background: step.color }}
-                    >
-                      <span className="text-white">{step.icon}</span>
-                    </div>
-                  </div>
-                  <div className={`${i < STEPS.length - 1 ? "pb-16" : "pb-0"} flex-1`}>
-                    <span className="text-xs font-[var(--font-mono)] text-white/30 tracking-widest uppercase">{step.num}</span>
-                    <h3 className="text-3xl md:text-4xl font-[var(--font-display)] font-semibold mt-1 mb-4">{step.title}</h3>
-                    <p className="text-white/50 text-base leading-relaxed max-w-xl">{step.desc}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
-      </section>
-
-      {/* Features */}
-      <section id="Features" className="py-24">
-        <div className="max-w-5xl mx-auto px-6 mb-16">
-          <p className="text-xs font-[var(--font-mono)] text-[#c2522b] tracking-widest uppercase mb-3">Features</p>
-          <h2 className="text-4xl md:text-5xl font-[var(--font-display)] font-semibold leading-tight">
-            What the system<br />
-            <em className="italic font-light">actually does</em>
-          </h2>
-        </div>
-
-        {FEATURES.map((f, i) => (
-          <div key={f.title} className="border-t border-[#e8ddd0] group">
-            <div className={`max-w-5xl mx-auto px-6 py-12 flex flex-col ${i % 2 === 0 ? "md:flex-row" : "md:flex-row-reverse"} gap-10 md:gap-16 items-center`}>
-              <div className="w-full md:w-1/2 overflow-hidden bg-[#f2ead8] flex-shrink-0" style={{ aspectRatio: "4/3" }}>
-                <img
-                  src={f.img}
-                  alt={f.title}
-                  className="w-full h-full object-cover opacity-85 group-hover:scale-105 transition-transform duration-700"
-                />
-              </div>
-              <div className="flex-1">
-                <span className="text-xs font-[var(--font-mono)] text-[#c2522b] tracking-widest uppercase">{f.tag}</span>
-                <h3 className="text-2xl md:text-3xl font-[var(--font-display)] font-semibold mt-3 mb-4 text-[#2c2319] leading-snug">{f.title}</h3>
-                <p className="text-[#7a6a58] leading-relaxed text-base">{f.desc}</p>
-              </div>
-            </div>
-          </div>
+    <div style={{ background: "var(--bg-deep)", minHeight: "100vh", padding: "80px 24px" }}>
+      <div style={{ maxWidth: 720, margin: "0 auto" }}>
+        <BackBtn onClick={onBack} />
+        <p className="label-green" style={{ marginBottom: 12 }}>Legal</p>
+        <h1 className="condensed" style={{ fontSize: 52, color: "var(--text-primary)", marginBottom: 48, lineHeight: 1.05 }}>Terms and Conditions</h1>
+        <p className="mono" style={{ fontSize: 13, color: "var(--text-muted)", marginBottom: 48 }}>Last updated: September 16, 2026</p>
+        {[
+          { h: "Acceptance", b: "By accessing this site you agree to these terms. If you do not agree, please do not use the site." },
+          { h: "Intellectual property", b: "The source code for this project is released under the MIT License. The site design and written content are copyright of the project authors." },
+          { h: "No warranties", b: "This software is provided as-is, without warranty of any kind, express or implied." },
+        ].map((s, i, arr) => (
+          <section key={s.h} style={{ marginBottom: 40, paddingBottom: 40, borderBottom: i < arr.length - 1 ? "1px solid var(--border)" : "none" }}>
+            <h2 style={{ fontSize: 20, fontWeight: 600, color: "var(--text-primary)", marginBottom: 12 }}>{s.h}</h2>
+            <p style={{ fontSize: 15, lineHeight: 1.75, color: "var(--text-secondary)" }}>{s.b}</p>
+          </section>
         ))}
-        <div className="border-t border-[#e8ddd0]" />
-      </section>
-
-      {/* Demo */}
-      <DemoSection />
-
-      {/* Team */}
-      <section id="Team" className="py-24 px-6">
-        <div className="max-w-5xl mx-auto">
-          <p className="text-xs font-[var(--font-mono)] text-[#c2522b] tracking-widest uppercase mb-3">Team</p>
-          <h2 className="text-4xl md:text-5xl font-[var(--font-display)] font-semibold mb-16 leading-tight">
-            Built by three<br />
-            <em className="italic font-light">engineers</em>
-          </h2>
-
-          <div className="flex flex-col">
-            {[
-              { name: "Chinmay Gupta", role: "UI and Visualization", color: "#e8775a" },
-              { name: "Aryan Sharma", role: "Physics and Environment", color: "#d97706" },
-              { name: "Harnoor Kant", role: "AI and Control Systems", color: "#c2522b" },
-            ].map((m, i, arr) => (
-              <div
-                key={m.name}
-                className="flex items-center justify-between py-5 group hover:pl-3 transition-all duration-150 cursor-default"
-                style={{
-                  borderTopWidth: "1px",
-                  borderTopStyle: "solid",
-                  borderTopColor: "#e8ddd0",
-                  borderBottomWidth: i === arr.length - 1 ? "1px" : "0",
-                  borderBottomStyle: "solid",
-                  borderBottomColor: "#e8ddd0",
-                  borderLeftWidth: 0,
-                  borderRightWidth: 0,
-                }}
-              >
-                <div className="flex items-center gap-4">
-                  <span className="w-2 h-2 flex-shrink-0 opacity-0 group-hover:opacity-100 transition-opacity" style={{ background: m.color }} />
-                  <span className="text-2xl md:text-3xl font-[var(--font-display)] font-semibold text-[#2c2319] group-hover:text-[#c2522b] transition-colors">
-                    {m.name}
-                  </span>
-                </div>
-                <span className="text-sm font-[var(--font-mono)] text-[#7a6a58] tracking-wide hidden sm:block">{m.role}</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      </section>
-    </>
+      </div>
+    </div>
   );
 }
 
+// ─── PEI logo SVG ─────────────────────────────────────────────────────────────
+function PeiLogo({ size = 28 }: { size?: number }) {
+  return (
+    <svg width={size} height={size} viewBox="0 0 28 28" fill="none">
+      <rect width="28" height="28" rx="6" fill="rgba(16,201,122,0.15)"/>
+      <path d="M14 6a2 2 0 0 0-2 2v7.17A4 4 0 1 0 16 15.17V8a2 2 0 0 0-2-2z" stroke="var(--green)" strokeWidth="1.5" fill="none" strokeLinecap="round"/>
+      <circle cx="14" cy="20" r="1.5" fill="var(--green)"/>
+    </svg>
+  );
+}
+
+// ─── main ─────────────────────────────────────────────────────────────────────
 export default function App() {
-  const [menuOpen, setMenuOpen] = useState(false);
-  const [page, setPage] = useState<Page>("home");
+  const [page, setPage] = useState<"home" | "privacy" | "terms">("home");
+  useEffect(() => { window.scrollTo(0, 0); }, [page]);
 
-  const scrollTo = (id: string) => {
-    setMenuOpen(false);
-    if (page !== "home") {
-      setPage("home");
-      setTimeout(() => document.getElementById(id)?.scrollIntoView({ behavior: "smooth" }), 80);
-    } else {
-      document.getElementById(id)?.scrollIntoView({ behavior: "smooth" });
-    }
-  };
-
-  const goPage = (p: Page) => {
-    setPage(p);
-    setMenuOpen(false);
-  };
-
-  if (page === "terms") return <TermsPage onBack={() => setPage("home")} />;
   if (page === "privacy") return <PrivacyPage onBack={() => setPage("home")} />;
+  if (page === "terms") return <TermsPage onBack={() => setPage("home")} />;
+
+  const navLinks = [
+    { label: "Problem",      href: "#problem" },
+    { label: "How It Works", href: "#how-it-works" },
+    { label: "Features",     href: "#features" },
+    { label: "Demo",         href: "#demo" },
+    { label: "Team",         href: "#team" },
+  ];
 
   return (
-    <div className="min-h-screen bg-[#faf6f0] text-[#2c2319]" style={{ cursor: "none" }}>
-      <CursorAir />
-      {/* CursorAir is now just a dot — no trail */}
+    <div style={{ background: "#000" }}>
 
-      {/* Nav */}
-      <nav className="fixed top-0 left-0 right-0 z-50 bg-[#faf6f0]/90 backdrop-blur-md border-b border-[#e8ddd0]">
-        <div className="max-w-6xl mx-auto px-6 h-16 flex items-center justify-between">
-          <button onClick={() => setPage("home")} className="flex items-center gap-2 cursor-pointer">
-            <div className="w-7 h-7 flex items-center justify-center" style={{ background: "#c2522b" }}>
-              <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
-                <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z" />
+      {/* ══════════════════════════════════════════════════════════════════════
+          CINEMATIC HERO — full viewport, video background, glass card
+      ══════════════════════════════════════════════════════════════════════ */}
+      <section style={{ position: "relative", height: "100vh", minHeight: 600, overflow: "hidden", background: "#000" }}>
+
+        {/* Background video */}
+        <video
+          autoPlay muted loop playsInline
+          aria-hidden="true"
+          style={{ position: "absolute", inset: 0, width: "100%", height: "100%", objectFit: "cover", objectPosition: "center", zIndex: 0, pointerEvents: "none", userSelect: "none" }}
+        >
+          <source src="https://d8j0ntlcm91z4.cloudfront.net/user_38xzZboKViGWJOttwIXH07lWA1P/hf_20260808_064556_051587f1-74a1-4336-8c05-4dde3594ed05.mp4" type="video/mp4" />
+        </video>
+
+        {/* Vignette overlay */}
+        <div style={{
+          position: "absolute", inset: 0, zIndex: 1, pointerEvents: "none",
+          background: "linear-gradient(180deg, rgba(0,0,0,.18), transparent 24%, transparent 72%, rgba(0,0,0,.55)), radial-gradient(ellipse at 44% 54%, transparent 30%, rgba(0,0,0,.38) 100%)",
+        }} />
+
+        {/* ── TOP NAV ── */}
+        <header style={{ position: "absolute", top: "clamp(20px, 2.3vh, 30px)", left: "var(--gutter)", right: "var(--gutter)", zIndex: 10, display: "flex", alignItems: "center", gap: 0, whiteSpace: "nowrap" }}>
+
+          {/* Brand */}
+          <a href="#" aria-label="PEI home" className="animate-brand" style={{ display: "flex", alignItems: "center", gap: 10, textDecoration: "none", filter: "drop-shadow(0 1px 2px rgba(0,0,0,.3))" }}>
+            <PeiLogo size={30} />
+            <span style={{ fontFamily: "'Epilogue', sans-serif", fontWeight: 700, fontSize: 17, color: "#fff", letterSpacing: "-0.02em" }}>PEI</span>
+          </a>
+
+          {/* Nav links */}
+          <nav style={{ display: "flex", alignItems: "center", gap: "clamp(28px, 2.8vw, 42px)", marginLeft: "clamp(32px, 3vw, 48px)" }}>
+            {navLinks.map((l, i) => (
+              <a key={l.label} href={l.href}
+                className={`animate-nav-${i + 1}`}
+                style={{ fontSize: 15, fontWeight: 430, letterSpacing: "-0.02em", color: "rgba(229,229,230,.77)", textDecoration: "none", textShadow: "0 1px 3px rgba(0,0,0,.55)", transition: "color 140ms" }}
+                onMouseEnter={e => (e.currentTarget.style.color = "#fff")}
+                onMouseLeave={e => (e.currentTarget.style.color = "rgba(229,229,230,.77)")}>
+                {l.label}
+              </a>
+            ))}
+          </nav>
+
+          {/* Time / status panel */}
+          <div className="animate-cta-nav" style={{ marginLeft: "auto", display: "flex", alignItems: "center", gap: 20 }}>
+            <div style={{ borderLeft: "2px solid rgba(16,201,122,0.5)", paddingLeft: 12 }}>
+              <p style={{ fontSize: 11, fontWeight: 420, color: "rgba(240,240,240,.65)", marginBottom: 2, fontFamily: "var(--mono)" }}>SYSTEM STATUS</p>
+              <p style={{ fontSize: 13, fontWeight: 500, color: "rgba(16,201,122,.93)", fontFamily: "var(--mono)" }}>Digital Twin Active</p>
+            </div>
+
+            {/* Sign up / CTA */}
+            <a href="#features" style={{
+              display: "inline-flex", alignItems: "center",
+              height: 40, padding: "0 20px",
+              background: "#fff", color: "#101010",
+              borderRadius: 7, textDecoration: "none",
+              fontSize: 14, fontWeight: 460, letterSpacing: "-0.02em",
+              boxShadow: "inset 0 1px 0 rgba(255,255,255,.72), 0 1px 5px rgba(0,0,0,.34)",
+              transition: "filter 140ms",
+            }}
+              onMouseEnter={e => (e.currentTarget.style.filter = "brightness(1.08)")}
+              onMouseLeave={e => (e.currentTarget.style.filter = "brightness(1)")}>
+              Explore
+            </a>
+          </div>
+        </header>
+
+        {/* ── HERO CONTENT — bottom left ── */}
+        <div style={{ position: "absolute", left: "var(--gutter)", bottom: "var(--hero-bottom)", zIndex: 10, maxWidth: "min(680px, 55vw)" }}>
+
+          {/* Headline — two lines with entrance clip */}
+          <h1 style={{ marginBottom: "clamp(14px, 2vh, 22px)", lineHeight: 1 }}>
+            <span style={{ display: "block", overflow: "hidden" }}>
+              <span className="animate-line-1 condensed" style={{
+                display: "block", fontSize: "clamp(52px, 7.5vh, 96px)",
+                color: "#fff", transform: "scaleX(0.88)", transformOrigin: "left center",
+                textShadow: "0 2px 2px rgba(0,0,0,.44)",
+              }}>
+                Stop Reacting
+              </span>
+            </span>
+            <span style={{ display: "block", overflow: "hidden" }}>
+              <span className="animate-line-2 condensed" style={{
+                display: "block", fontSize: "clamp(52px, 7.5vh, 96px)",
+                color: "rgba(211,207,207,.78)", transform: "scaleX(0.88)", transformOrigin: "left center",
+                textShadow: "0 2px 2px rgba(0,0,0,.44)",
+              }}>
+                To The Heat.
+              </span>
+            </span>
+          </h1>
+
+          {/* Body copy */}
+          <p className="animate-copy" style={{
+            fontSize: "clamp(14px, 1.65vh, 18px)", lineHeight: "clamp(20px, 2.2vh, 26px)",
+            fontWeight: 350, letterSpacing: "0.01em",
+            color: "rgba(226,229,228,.84)", maxWidth: 480,
+            textShadow: "0 1px 3px rgba(0,0,0,.7)",
+            marginBottom: "clamp(22px, 3vh, 36px)",
+          }}>
+            Your building is already losing the battle against heat<br />
+            before your thermostat even notices. PEI reads outdoor<br />
+            thermal conditions 15 minutes ahead and acts first.
+          </p>
+
+          {/* Primary CTA — white button with dark arrow box */}
+          <a href="#problem" className="animate-cta" style={{
+            position: "relative", display: "inline-flex", alignItems: "center",
+            width: "clamp(148px, 15vw, 172px)", height: "clamp(40px, 4vh, 46px)",
+            borderRadius: 7, background: "#fff", color: "#111",
+            textDecoration: "none", overflow: "hidden",
+            boxShadow: "0 1px 5px rgba(0,0,0,.38)",
+          }}>
+            <span style={{ position: "absolute", left: "8%", fontSize: "clamp(14px, 1.7vh, 17px)", fontWeight: 450, letterSpacing: "-0.02em" }}>
+              Learn More
+            </span>
+            <span style={{
+              position: "absolute", right: "3%", top: "12%",
+              width: "20%", height: "76%", borderRadius: 6,
+              background: "#070909", display: "flex", alignItems: "center", justifyContent: "center",
+            }}>
+              <svg width="14" height="14" viewBox="0 0 14 14" fill="none">
+                <path d="M3 7h8M7 3l4 4-4 4" stroke="#fff" strokeWidth="1.5" strokeLinecap="round" strokeLinejoin="round"/>
               </svg>
-            </div>
-            <span className="font-[var(--font-display)] font-semibold text-lg tracking-tight">ThermoSync</span>
-          </button>
-
-          <div className="hidden md:flex items-center gap-8">
-            {NAV_LINKS.map((link) => (
-              <button key={link} onClick={() => scrollTo(link)} className="text-sm text-[#7a6a58] hover:text-[#2c2319] transition-colors cursor-pointer">
-                {link}
-              </button>
-            ))}
-          </div>
-
-          <button
-            onClick={() => scrollTo("Demo")}
-            className="hidden md:inline-flex items-center gap-2 px-5 py-2 text-sm font-medium text-white transition-opacity hover:opacity-90 cursor-pointer"
-            style={{ background: "#c2522b" }}
-          >
-            Try Demo
-          </button>
-
-          <button className="md:hidden p-2" onClick={() => setMenuOpen(!menuOpen)}>
-            <div className={`w-5 h-0.5 bg-[#2c2319] transition-all mb-1 ${menuOpen ? "rotate-45 translate-y-1.5" : ""}`} />
-            <div className={`w-5 h-0.5 bg-[#2c2319] transition-all mb-1 ${menuOpen ? "opacity-0" : ""}`} />
-            <div className={`w-5 h-0.5 bg-[#2c2319] transition-all ${menuOpen ? "-rotate-45 -translate-y-1.5" : ""}`} />
-          </button>
+            </span>
+          </a>
         </div>
-        {menuOpen && (
-          <div className="md:hidden border-t border-[#e8ddd0] bg-[#faf6f0] px-6 py-4 flex flex-col gap-4">
-            {NAV_LINKS.map((link) => (
-              <button key={link} onClick={() => scrollTo(link)} className="text-left text-[#7a6a58] text-sm cursor-pointer">{link}</button>
+
+
+        {/* Scroll hint */}
+        <div style={{ position: "absolute", bottom: 24, left: "50%", transform: "translateX(-50%)", zIndex: 10, display: "flex", flexDirection: "column", alignItems: "center", gap: 6 }}>
+          <p style={{ fontSize: 10, letterSpacing: "0.14em", color: "rgba(255,255,255,.3)", fontFamily: "var(--mono)", textTransform: "uppercase" }}>Scroll</p>
+          <svg width="14" height="18" viewBox="0 0 14 18" fill="none" style={{ animation: "entrance-fade-up 1s ease 1.8s both" }}>
+            <path d="M7 2v12M2 10l5 5 5-5" stroke="rgba(255,255,255,.25)" strokeWidth="1.4" strokeLinecap="round" strokeLinejoin="round"/>
+          </svg>
+        </div>
+      </section>
+
+      {/* ══════════════════════════════════════════════════════════════════════
+          SCROLLABLE SECTIONS BELOW
+      ══════════════════════════════════════════════════════════════════════ */}
+
+      {/* ── PROBLEM ── */}
+      <section id="problem" style={{ background: "var(--ls-bg)", borderTop: "1px solid var(--ls-border)" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto", padding: "100px 32px" }}>
+          <p className="label" style={{ marginBottom: 20, color: "var(--ls-text-mute)" }}>The Problem</p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "start", marginBottom: 80 }}>
+            <div>
+              <h2 className="condensed" style={{ fontSize: "clamp(40px, 5vw, 64px)", lineHeight: 1.05, color: "var(--ls-text)", marginBottom: 28 }}>
+                Reactive cooling is a design flaw, not a feature.
+              </h2>
+              <p style={{ fontSize: 16, lineHeight: 1.75, color: "var(--ls-text-sec)" }}>
+                The thermostat in your wall operates on a century-old principle: detect heat, respond to heat. By the time it acts, the damage is done. The system blasts at full power, draws peak-rate electricity, and stresses the grid at precisely the moment when demand is highest and emissions are worst.
+              </p>
+            </div>
+            <div />
+          </div>
+          <div>
+            {[
+              { num: "I",   label: "Peak-hour blast",     body: "Reactive systems ramp to maximum power in the early afternoon when grid electricity is most expensive and dirtiest." },
+              { num: "II",  label: "Comfort already lost", body: "By the time the thermostat triggers, occupants have already experienced discomfort. The system corrects for the past, not the present." },
+              { num: "III", label: "Wasted thermal mass",  body: "Buildings naturally store heat. Reactive controllers ignore this, missing the window to pre-condition at cheaper, greener hours." },
+            ].map(p => (
+              <div key={p.label} style={{ position: "relative", borderTop: "1px solid var(--ls-border)", padding: "40px 0", overflow: "hidden" }}>
+                <span className="condensed" style={{ position: "absolute", right: 0, top: "50%", transform: "translateY(-50%)", fontSize: 160, color: "rgba(0,0,0,0.04)", lineHeight: 1, userSelect: "none", pointerEvents: "none" }}>{p.num}</span>
+                <div style={{ display: "grid", gridTemplateColumns: "180px 1fr", gap: 60, alignItems: "center", position: "relative" }}>
+                  <p className="condensed" style={{ fontSize: 28, color: "var(--ls-text)", lineHeight: 1.2 }}>{p.label}</p>
+                  <p style={{ fontSize: 15, lineHeight: 1.75, color: "var(--ls-text-sec)", maxWidth: 520 }}>{p.body}</p>
+                </div>
+              </div>
+            ))}
+            <div style={{ borderTop: "1px solid var(--ls-border)" }} />
+          </div>
+        </div>
+      </section>
+
+      {/* ── HOW IT WORKS ── */}
+      <section id="how-it-works" style={{ background: "var(--ls-bg-alt)", borderTop: "1px solid var(--ls-border)", padding: "100px 32px" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <p className="label" style={{ marginBottom: 20, color: "var(--ls-text-mute)" }}>How It Works</p>
+          <h2 className="condensed" style={{ fontSize: "clamp(40px, 5vw, 64px)", lineHeight: 1.05, color: "var(--ls-text)", marginBottom: 16 }}>
+            A 3D digital twin of your building,<br />running at the edge.
+          </h2>
+          <p style={{ fontSize: 16, color: "var(--ls-text-sec)", maxWidth: 600, marginBottom: 80, lineHeight: 1.7 }}>
+            Our system builds a live physics model of your building: wall thermal mass, solar angle, occupancy patterns, weather forecast. Then a Model Predictive Control algorithm computes the optimal setpoint 15 minutes in advance.
+          </p>
+
+          {/* MPC steps — staggered waterfall */}
+          <div style={{ marginBottom: 96 }}>
+            {[
+              { step: "01", title: "Sense", indent: "0%", body: "Thermal sensors sample outdoor and indoor conditions. Weather API feeds a 15-minute forecast. Sun position is calculated from latitude, longitude, and UTC time." },
+              { step: "02", title: "Model", indent: "18%", body: "The digital twin calculates heat ingress across 5 physics vectors simultaneously: Solar Radiation, Human Occupancy, Envelope Leakage, Humidity, and Thermal Decay." },
+              { step: "03", title: "Predict + Act", indent: "36%", body: "The MPC algorithm optimizes the setpoint trajectory that minimizes discomfort while shifting peak energy consumption to cheaper, greener grid moments." },
+            ].map((s, i) => (
+              <div key={s.step} style={{ position: "relative", paddingLeft: s.indent, paddingBottom: i < 2 ? 56 : 0 }}>
+                <span className="condensed" style={{ position: "absolute", left: s.indent, top: -20, fontSize: 140, lineHeight: 1, color: "rgba(0,0,0,0.04)", userSelect: "none", pointerEvents: "none", zIndex: 0 }}>{s.step}</span>
+                <div style={{ position: "relative", zIndex: 1 }}>
+                  <span className="mono" style={{ fontSize: 11, color: "var(--blue)", letterSpacing: "0.1em", display: "block", marginBottom: 12 }}>{s.step}</span>
+                  <h3 className="condensed" style={{ fontSize: "clamp(36px, 4vw, 52px)", color: "var(--ls-text)", lineHeight: 1.05, marginBottom: 16 }}>{s.title}</h3>
+                  <p style={{ fontSize: 15, lineHeight: 1.75, color: "var(--ls-text-sec)", maxWidth: 480 }}>{s.body}</p>
+                </div>
+                {i < 2 && <div style={{ position: "absolute", bottom: 0, left: `calc(${s.indent} + 24px)`, width: 1, height: 40, background: "linear-gradient(to bottom, var(--ls-border), transparent)" }} />}
+              </div>
             ))}
           </div>
-        )}
-      </nav>
 
-      <HomePage scrollTo={scrollTo} setPage={setPage} />
-
-      {/* Footer */}
-      <footer className="py-16 px-6 bg-[#2c2319]">
-        <div className="max-w-5xl mx-auto">
-          <div className="flex flex-col md:flex-row items-start md:items-center justify-between gap-8 mb-10">
-            <div>
-              <button onClick={() => setPage("home")} className="flex items-center gap-2 mb-4 cursor-pointer">
-                <div className="w-7 h-7 flex items-center justify-center" style={{ background: "#c2522b" }}>
-                  <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="white" strokeWidth="2.5">
-                    <path d="M14 14.76V3.5a2.5 2.5 0 0 0-5 0v11.26a4.5 4.5 0 1 0 5 0z" />
-                  </svg>
+          {/* 5 heat vectors — instrument panel */}
+          <p className="label" style={{ marginBottom: 40, color: "var(--ls-text-mute)" }}>The 5 heat gain vectors modeled by the digital twin</p>
+          <div style={{ borderTop: "1px solid var(--ls-border)" }}>
+            {[
+              { id: "Q_sol",  name: "Solar Radiation",  desc: "Sunlight passing through windows is the single largest heat source in most buildings. The angle of the sun shifts every minute, so the load on each facade changes constantly throughout the day." },
+              { id: "Q_occ",  name: "Human Occupancy",  desc: "People generate heat just by being present. A room with ten people has a meaningfully different thermal profile than an empty one, and the system adjusts for this in real time." },
+              { id: "Q_inf",  name: "Envelope Leakage", desc: "No building is perfectly sealed. Hot outside air seeps in through gaps, around windows, and through porous walls whenever the outdoor temperature exceeds the indoor target." },
+              { id: "Q_lat",  name: "Humidity Load",    desc: "Moisture in the air carries hidden heat. High humidity means the HVAC must work harder even if the temperature reads normal, because the air feels hotter than it is." },
+              { id: "Q_mass", name: "Thermal Decay",    desc: "Walls, floors and ceilings absorb heat during the day and slowly release it overnight. A building that felt cool at noon can still feel warm at midnight because of this stored energy." },
+            ].map((v, i) => (
+              <div key={v.id} style={{ borderBottom: "1px solid var(--ls-border)", padding: "36px 0", display: "grid", gridTemplateColumns: "36px 1fr", gap: "0 40px", alignItems: "start" }}>
+                <span className="mono" style={{ fontSize: 11, color: "var(--ls-text-mute)", paddingTop: 5 }}>0{i + 1}</span>
+                <div>
+                  <p className="condensed" style={{ fontSize: 26, color: "var(--ls-text)", lineHeight: 1.1, marginBottom: 14 }}>{v.name}</p>
+                  <p style={{ fontSize: 15, color: "var(--ls-text-sec)", lineHeight: 1.75, maxWidth: 640 }}>{v.desc}</p>
                 </div>
-                <span className="font-[var(--font-display)] font-semibold text-lg text-white tracking-tight">ThermoSync</span>
-              </button>
-              <p className="text-white/40 text-sm max-w-xs leading-relaxed">
-                Outdoor thermal sensing with automatic indoor HVAC control.
-              </p>
-              <p className="text-white/30 text-xs font-[var(--font-mono)] mt-2 tracking-wide">thermosync.project.dev</p>
+              </div>
+            ))}
+          </div>
+        </div>
+      </section>
+
+      {/* ── FEATURES ── */}
+      <section id="features" style={{ background: "var(--ls-bg)", borderTop: "1px solid var(--ls-border)", padding: "100px 32px" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <p className="label" style={{ marginBottom: 20, color: "var(--ls-text-mute)" }}>Features</p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "end", marginBottom: 80 }}>
+            <h2 className="condensed" style={{ fontSize: "clamp(40px, 5vw, 64px)", lineHeight: 1.05, color: "var(--ls-text)" }}>
+              Six things the system does that no thermostat can.
+            </h2>
+            <p style={{ fontSize: 16, lineHeight: 1.75, color: "var(--ls-text-sec)" }}>
+              Each feature below is a direct response to a specific failure mode in conventional reactive HVAC. Together they form a closed-loop intelligence layer that replaces guesswork with physics.
+            </p>
+          </div>
+          {[
+            { index: "01", size: 72,  title: "Predictive Lookahead",    body: "Acts 15 minutes early. The system calculates when to begin cooling before the heat arrives, so the room is already comfortable when you need it." },
+            { index: "02", size: 52,  title: "5-Vector Heat Modeling",   body: "Tracks five independent heat sources at once: sun angle, people, wall leakage, moisture, and stored thermal mass. Not just the temperature on the wall." },
+            { index: "03", size: 88,  title: "Grid-Aware Scheduling",    body: "Shifts heavy cooling to cheaper, lower-emission grid hours. Same comfort, less cost, less carbon." },
+            { index: "04", size: 60,  title: "Anomaly Detection",        body: "Catches deviations the moment they happen: an open window, a crowded room, a stuck valve. The model recalculates before you notice anything is off." },
+            { index: "05", size: 44,  title: "Profile Adaptation",       body: "Maintains a separate thermal model for each building type. An office and a home are treated as fundamentally different systems, not the same template." },
+            { index: "06", size: 68,  title: "Edge-Native Execution",    body: "The entire control loop runs on a microcontroller in the building. No cloud, no latency. Sensor reads, model computes, valve opens, all in under a second." },
+          ].map((f, i) => (
+            <div key={f.index} style={{ borderTop: "1px solid var(--ls-border)", padding: "40px 0 44px" }}>
+              <div style={{ display: "flex", alignItems: "baseline", gap: 20, marginBottom: 16 }}>
+                <span className="mono" style={{ fontSize: 10, color: "var(--ls-text-mute)", flexShrink: 0, paddingBottom: 4 }}>{f.index}</span>
+                <p className="condensed" style={{ fontSize: f.size, lineHeight: 0.95, color: "var(--ls-text)", letterSpacing: "-0.03em" }}>{f.title}</p>
+              </div>
+              <p style={{ fontSize: 14, lineHeight: 1.8, color: "var(--ls-text-sec)", marginLeft: 30, maxWidth: 560 }}>{f.body}</p>
             </div>
-            <div className="flex flex-col sm:flex-row gap-3">
-              <button
-                onClick={() => scrollTo("Demo")}
-                className="px-6 py-3 text-sm font-medium text-white transition-opacity hover:opacity-90 cursor-pointer"
-                style={{ background: "#c2522b" }}
-              >
-                Try the Demo
-              </button>
-              <button
-                onClick={() => scrollTo("Overview")}
-                className="px-6 py-3 text-sm font-medium text-white/60 border border-white/20 hover:border-white/40 transition-colors cursor-pointer"
-              >
-                Back to top
-              </button>
-            </div>
+          ))}
+          <div style={{ borderTop: "1px solid var(--ls-border)" }} />
+        </div>
+      </section>
+
+      {/* ── ARCHITECTURE ── */}
+      <section style={{ background: "var(--ls-bg-alt)", borderTop: "1px solid var(--ls-border)", padding: "80px 32px" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "baseline", marginBottom: 56 }}>
+            <p className="label" style={{ color: "var(--ls-text-mute)" }}>System architecture</p>
+            <p className="mono" style={{ fontSize: 11, color: "var(--ls-text-mute)" }}>Read top to bottom</p>
           </div>
 
-          <div className="border-t border-white/10 pt-6 flex flex-col sm:flex-row items-start sm:items-center justify-between gap-4">
-            <p className="text-white/30 text-xs font-[var(--font-mono)]">
-              2026 ThermoSync. Student prototype.
-            </p>
-            <div className="flex items-center gap-6">
-              <button onClick={() => goPage("privacy")} className="text-white/40 text-xs hover:text-white/70 transition-colors cursor-pointer font-[var(--font-mono)]">
-                Privacy Policy
-              </button>
-              <button onClick={() => goPage("terms")} className="text-white/40 text-xs hover:text-white/70 transition-colors cursor-pointer font-[var(--font-mono)]">
-                Terms and Conditions
-              </button>
+{[
+            {
+              stage: "01", phase: "INPUT",
+              label: "Sensing",
+              accent: "#0ea5e9",
+              what: "The building is instrumented with temperature, humidity, and CO₂ sensors at key positions. Every 800ms, all readings are collected and cross-checked against each other.",
+              signals: ["Room temperature", "Outdoor weather feed", "Humidity + CO₂", "Window and door state"],
+            },
+            {
+              stage: "02", phase: "MODEL",
+              label: "Digital Twin",
+              accent: "#0ea5e9",
+              what: "A live physics simulation tracks how heat moves through walls, glass, air, and people. It projects the building's thermal state 15 minutes forward before any decision is made.",
+              signals: ["Solar angle calculation", "Thermal mass accounting", "Occupancy heat load", "Envelope loss rate"],
+            },
+            {
+              stage: "03", phase: "DECIDE",
+              label: "Control",
+              accent: "#c2692a",
+              what: "The MPC algorithm solves for the lowest-cost cooling path that keeps the building comfortable. It weighs grid carbon intensity and pre-conditions the space before the heat arrives. Runs fully on-device.",
+              signals: ["MPC optimization loop", "Grid carbon intensity", "15-minute trajectory", "Comfort boundary check"],
+            },
+            {
+              stage: "04", phase: "OUTPUT",
+              label: "Actuation",
+              accent: "#10c97a",
+              what: "Commands are dispatched via MQTT to the HVAC actuators. The full cycle from sensor read to valve response completes in under one second, with no cloud round-trip.",
+              signals: ["MQTT to HVAC unit", "Damper and valve control", "Status back-feed", "Time-series log"],
+            },
+          ].map((row, i) => (
+            <div key={row.stage} style={{ borderTop: "1px solid var(--ls-border)", padding: "44px 0", display: "grid", gridTemplateColumns: "48px 220px 1fr 280px", gap: "0 48px", alignItems: "start" }}>
+              {/* step number */}
+              <span className="mono" style={{ fontSize: 10, color: "var(--ls-text-mute)", paddingTop: 6 }}>{row.stage}</span>
+
+              {/* stage name */}
+              <div>
+                <p className="mono" style={{ fontSize: 9, color: row.accent, letterSpacing: "0.14em", marginBottom: 10 }}>{row.phase}</p>
+                <p className="condensed" style={{ fontSize: 40, color: "var(--ls-text)", lineHeight: 1 }}>{row.label}</p>
+              </div>
+
+              {/* explanation */}
+              <p style={{ fontSize: 14, lineHeight: 1.8, color: "var(--ls-text-sec)", paddingTop: 2 }}>{row.what}</p>
+
+              {/* signals as flowing inline text */}
+              <p className="mono" style={{ fontSize: 11, color: "var(--ls-text-mute)", lineHeight: 2, paddingTop: 4 }}>
+                {row.signals.join("  ·  ")}
+              </p>
             </div>
+          ))}
+          <div style={{ borderTop: "1px solid var(--ls-border)" }} />
+        </div>
+      </section>
+
+      {/* ── DEMO / DIGITAL TWIN ── */}
+      <section id="demo" style={{ background: "var(--ls-bg)", borderTop: "1px solid var(--ls-border)", padding: "100px 32px" }}>
+        <div style={{ maxWidth: 1400, margin: "0 auto" }}>
+          <p className="label" style={{ marginBottom: 20, color: "var(--ls-text-mute)" }}>Live Demonstration</p>
+          <div style={{ display: "grid", gridTemplateColumns: "1fr 1fr", gap: 80, alignItems: "end", marginBottom: 40 }}>
+            <h2 className="condensed" style={{ fontSize: "clamp(40px, 5vw, 64px)", lineHeight: 1.05, color: "var(--ls-text)" }}>
+              Vision-Predictive Digital Twin
+            </h2>
+            <p style={{ fontSize: 16, lineHeight: 1.75, color: "var(--ls-text-sec)" }}>
+              Interact with the live simulation. The system tracks sun angles, room thermal mass, and occupancy, projecting the thermal state 15 minutes forward to optimize HVAC power via PID+FF and MPC algorithms.
+            </p>
+          </div>
+          
+          <div style={{ width: '100%', height: '800px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--ls-border)', background: '#000' }}>
+            <iframe 
+              src="/thermostat/index.html" 
+              style={{ width: '100%', height: '100%', border: 'none' }}
+              title="Predictive Thermostat Simulation"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ── TEAM ── */}
+      <section id="team" style={{ background: "var(--ls-bg)", borderTop: "1px solid var(--ls-border)", padding: "100px 32px" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <p className="label" style={{ marginBottom: 20, color: "var(--ls-text-mute)" }}>Team</p>
+          <h2 className="condensed" style={{ fontSize: "clamp(36px, 4.5vw, 58px)", lineHeight: 1.05, color: "var(--ls-text)", marginBottom: 80 }}>
+            Three people. One problem. No sleep.
+          </h2>
+          {[
+            { name: "Chinmay Gupta", role: "UI + Visualization",   detail: "Digital twin rendering, real-time data visualization, interface design", align: "flex-start" as const, nameSize: 52 },
+            { name: "Aryan Sharma",  role: "Physics + Environment", detail: "Solar ray-casting model, thermal mass calculations, sensor fusion",      align: "center"     as const, nameSize: 52 },
+            { name: "Harnoor Kant",  role: "AI + Control Systems",  detail: "MPC algorithm, PID executor, MQTT actuation pipeline",                   align: "flex-end"   as const, nameSize: 56 },
+          ].map(m => (
+            <div key={m.name} style={{ borderTop: "1px solid var(--ls-border)", padding: "36px 0", display: "flex", flexDirection: "column", alignItems: m.align }}>
+              <p className="mono" style={{ fontSize: 10, color: "var(--blue)", letterSpacing: "0.12em", marginBottom: 10 }}>{m.role.toUpperCase()}</p>
+              <p className="condensed" style={{ fontSize: m.nameSize, color: "var(--ls-text)", lineHeight: 1, marginBottom: 12 }}>{m.name}</p>
+              <p style={{ fontSize: 13, color: "var(--ls-text-sec)", maxWidth: 320, textAlign: m.align === "center" ? "center" : m.align === "flex-end" ? "right" : "left" }}>{m.detail}</p>
+            </div>
+          ))}
+          <div style={{ borderTop: "1px solid var(--ls-border)" }} />
+        </div>
+      </section>
+
+      {/* ── FOOTER ── */}
+      <footer style={{ background: "var(--ls-bg-alt)", borderTop: "1px solid var(--ls-border)", padding: "60px 32px 40px" }}>
+        <div style={{ maxWidth: 1200, margin: "0 auto" }}>
+          <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", gap: 40, flexWrap: "wrap", marginBottom: 48 }}>
+            <div>
+              <div style={{ display: "flex", alignItems: "center", gap: 12, marginBottom: 16 }}>
+                <PeiLogo size={26} />
+                <span className="condensed" style={{ fontSize: 18, color: "var(--ls-text)" }}>Predictive Environmental Intelligence</span>
+              </div>
+              <p style={{ fontSize: 14, color: "var(--ls-text-sec)", maxWidth: 340, lineHeight: 1.65 }}>
+                An AI-driven climate controller that stops reacting to heat and starts predicting it.
+              </p>
+            </div>
+            <div style={{ display: "flex", gap: 14, alignItems: "center", flexWrap: "wrap" }}>
+              <a href="#features" className="btn-primary">Explore features</a>
+              <button onClick={() => window.scrollTo({ top: 0, behavior: "smooth" })} style={{ background: "transparent", color: "var(--ls-text)", fontSize: 14, fontWeight: 500, padding: "12px 28px", border: "1px solid var(--ls-border)", cursor: "pointer", fontFamily: "'Plus Jakarta Sans', sans-serif", transition: "border-color 0.2s" }}>Back to top</button>
+            </div>
+          </div>
+          <div style={{ borderTop: "1px solid var(--ls-border)", paddingTop: 24, display: "flex", gap: 24 }}>
+            <button onClick={() => setPage("privacy")} style={{ fontSize: 12, color: "var(--ls-text-mute)", background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "var(--mono)" }}>Privacy Policy</button>
+            <button onClick={() => setPage("terms")}   style={{ fontSize: 12, color: "var(--ls-text-mute)", background: "none", border: "none", cursor: "pointer", padding: 0, fontFamily: "var(--mono)" }}>Terms and Conditions</button>
           </div>
         </div>
       </footer>
