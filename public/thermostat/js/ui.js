@@ -242,18 +242,35 @@ class UIController {
         // Raw environmental temperature before HVAC
         const rawIndoorTemp = baseTemp + solarGain + occGain;
 
-        // HVAC System Thermodynamic Capacity
-        const rawDeviation = rawIndoorTemp - targetTemp;
-        const maxHvacDelta = 10.0; // HVAC can change temp by max 10 degrees C
+        // --- HVAC CAPACITY LIMITS & PID CONTROL ---
+        let rawDeviation = rawIndoorTemp - targetTemp;
         
-        let actualHvacDelta = 0;
-        if (Math.abs(rawDeviation) <= maxHvacDelta) {
-            actualHvacDelta = rawDeviation;
-        } else {
-            actualHvacDelta = Math.sign(rawDeviation) * maxHvacDelta;
+        // Initialize AI Controller if not present
+        if (!this.hvacController) {
+            // Kp=1.5, Ki=0.1, Kd=0.05, Kff=0.2 (arbitrary tuning for smooth response)
+            this.hvacController = new FeedForwardPIDController(1.5, 0.1, 0.05, 0.2);
         }
 
-        const indoorTemp = rawIndoorTemp - actualHvacDelta;
+        const heatLoadKw = (solarGain / 8.0) * 8.5 + (this.settings.occupancy * 0.15);
+        const predictedHeatLoadKW = heatLoadKw;
+        
+        // Use Aryan's PID Controller to compute power % needed (0-100)
+        // We pass a rough 'dt' of 1/60th of a second for this frame
+        let powerPct = this.hvacController.compute(rawIndoorTemp, targetTemp, predictedHeatLoadKW, 1/60);
+        
+        // Apply HVAC cooling/heating effect to the room
+        // 100% power = 10.0 degrees of temperature pulling power
+        let maxHvacPull = 10.0 * (powerPct / 100);
+        
+        // The HVAC will pull the temp UP if it's too cold, or DOWN if it's too hot
+        let actualHvacDelta = 0;
+        if (Math.abs(rawDeviation) <= maxHvacPull) {
+            actualHvacDelta = rawDeviation;
+        } else {
+            actualHvacDelta = Math.sign(rawDeviation) * maxHvacPull;
+        }
+        
+        let indoorTemp = rawIndoorTemp - actualHvacDelta;
         this.indoorAvg.innerHTML = indoorTemp.toFixed(1) + '<span class="unit">&deg;C</span>';
 
         // Actual remaining deviation (if HVAC failed, this will be non-zero)
@@ -262,7 +279,6 @@ class UIController {
         this.deviationVal.textContent = sign + Math.abs(finalDeviation).toFixed(1);
 
         // Heat Load: Solar + Occupants
-        const heatLoadKw = (solarGain / 8.0) * 8.5 + (this.settings.occupancy * 0.15); 
         this.heatLoad.innerHTML = heatLoadKw.toFixed(2) + '<span class="unit">kW</span>';
 
         // Heat Exchange & Power
