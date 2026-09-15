@@ -463,52 +463,99 @@ function calculateQPredicted(intersections, sunIntensity, occupancyModel, weathe
 
 ---
 
-### Module 6: Stochastic Occupancy Model (`occupancy.js`)
+### Module 6: Multi-Signal Occupancy Fusion Engine (`occupancy.js`)
 
-**Purpose:** Models probabilistic room occupancy based on time of day, providing an expected value for the heat prediction model.
+**Purpose:** Estimates room occupancy by fusing **four independent signals** through a weighted average — far beyond the simple time-based lookup used by traditional smart thermostats. This module is environment-aware (Household vs Commercial baselines differ).
+
+**The 4 Occupancy Signals:**
+
+| # | Signal | Sensor | Household Baseline | Commercial Baseline | Weight |
+|---|--------|--------|-------|---------|--------|
+| 1 | ⏰ Time-Based Prior | Clock | Peaks 6 PM (dinner) | Peaks 10 AM (full office) | 15% |
+| 2 | 📶 WiFi Device Count | Router API / Simulated | 3 IoT + 2/person | 8 IoT + 2.5/person | **40%** |
+| 3 | 🔊 Ambient Noise (dB) | Microphone / Simulated | 30 dB base + 7 dB/person | 35 dB base + 5 dB/person | 20% |
+| 4 | 💡 Appliance State | Smart Plugs / Simulated | lights, fans, monitors | lights, fans, monitors | 25% |
+
+**Fusion Formula:**
+
+$$\hat{N}_{occupancy} = w_{time} \cdot \hat{N}_{time} + w_{wifi} \cdot \hat{N}_{wifi} + w_{noise} \cdot \hat{N}_{noise} + w_{app} \cdot \hat{N}_{appliance}$$
+
+Where $w_{wifi} = 0.40$ is the highest weight because device count is the most reliable proxy for human presence.
 
 ```javascript
 class StochasticOccupancyModel {
     constructor() {
-        // Probability distribution: [hour] → { mean, stddev }
+        // Signal 1: Time-based probability schedule (Household)
         this.schedule = {
-            0:  { mean: 2, std: 0.5 },   // sleeping
-            6:  { mean: 2, std: 0.3 },   // waking up
-            7:  { mean: 1.5, std: 0.8 }, // someone might leave early
-            8:  { mean: 0.5, std: 0.5 }, // most people at work/school
-            9:  { mean: 0.2, std: 0.3 },
-            12: { mean: 0.5, std: 0.5 }, // lunch break
-            14: { mean: 0.2, std: 0.3 },
-            17: { mean: 1.5, std: 0.8 }, // returning home
-            18: { mean: 2.5, std: 0.5 }, // dinner
-            20: { mean: 2, std: 0.3 },   // evening
-            22: { mean: 2, std: 0.3 },   // preparing to sleep
+            0: { mean: 2, std: 0.5 },    6: { mean: 2, std: 0.3 },
+            7: { mean: 1.5, std: 0.8 },   8: { mean: 0.5, std: 0.5 },
+            9: { mean: 0.2, std: 0.3 },   12: { mean: 0.5, std: 0.5 },
+            14: { mean: 0.2, std: 0.3 },  17: { mean: 1.5, std: 0.8 },
+            18: { mean: 2.5, std: 0.5 },  20: { mean: 2, std: 0.3 },
+            22: { mean: 2, std: 0.3 },
+        };
+        // Signal 1: Time-based probability schedule (Commercial)
+        this.commercialSchedule = {
+            0: { mean: 0, std: 0.1 },     6: { mean: 0.5, std: 0.3 },
+            7: { mean: 3, std: 1.0 },      8: { mean: 12, std: 2.0 },
+            9: { mean: 18, std: 3.0 },     10: { mean: 20, std: 2.0 },
+            12: { mean: 10, std: 3.0 },    13: { mean: 15, std: 2.0 },
+            14: { mean: 20, std: 2.0 },    17: { mean: 8, std: 3.0 },
+            18: { mean: 2, std: 1.0 },     20: { mean: 0.5, std: 0.3 },
+            22: { mean: 0, std: 0.1 },
         };
     }
 
-    getExpectedOccupancy(hour) {
-        const floorHour = Math.floor(hour);
-        const entries = Object.entries(this.schedule).map(([h, v]) => [parseInt(h), v]);
-        let lower = entries[0], upper = entries[entries.length - 1];
-        for (let i = 0; i < entries.length - 1; i++) {
-            if (entries[i][0] <= floorHour && entries[i+1][0] > floorHour) {
-                lower = entries[i];
-                upper = entries[i+1];
-                break;
-            }
-        }
-        // Linear interpolation
-        const t = (hour - lower[0]) / Math.max(1, upper[0] - lower[0]);
-        const mean = lower[1].mean + t * (upper[1].mean - lower[1].mean);
-        return Math.max(0, mean);
+    // Signal 1: Time-Based Prior (Bayesian Baseline)
+    getTimePrior(hour, isCommercial = false) { /* linear interpolation */ }
+
+    // Signal 2: WiFi Device Count (2 devices per person + IoT baseline)
+    simulateWiFiDevices(trueOccupancy, isCommercial) { /* Gaussian noise */ }
+    estimateFromWiFi(deviceCount, isCommercial) { /* inverse mapping */ }
+
+    // Signal 3: Ambient Noise Level (dB)
+    simulateNoiseLevel(trueOccupancy, isCommercial) { /* base + N*perPerson + noise */ }
+    estimateFromNoise(noiseDb, isCommercial) { /* inverse mapping */ }
+
+    // Signal 4: Active Appliances (Lights, Fans, Monitors)
+    simulateAppliances(trueOccupancy, hour, isCommercial) { /* returns {lightsOn, fansOn, monitorsOn} */ }
+    estimateFromAppliances(appliances, isCommercial) { /* inverse mapping */ }
+
+    // FUSION: Weighted average of all 4 signals
+    fuseOccupancy(hour, wifiDevices, noiseDb, appliances, isCommercial) {
+        const weights = { time: 0.15, wifi: 0.40, noise: 0.20, appliance: 0.25 };
+        const fusedEstimate =
+            weights.time * timePrior +
+            weights.wifi * wifiEstimate +
+            weights.noise * noiseEstimate +
+            weights.appliance * appEstimate;
+        return { fused, signals: { timePrior, wifiEstimate, noiseEstimate, applianceEstimate, wifiDevices, noiseDb, lightsOn, fansOn, monitorsOn }, weights };
     }
 
-    getUncertaintyBand(hour) {
-        const mean = this.getExpectedOccupancy(hour);
-        const std = 0.5; // simplified
-        return { low: Math.max(0, mean - std), high: mean + std };
+    // Full Pipeline: Simulate ground truth → generate sensor readings → fuse
+    getExpectedOccupancy(hour, isCommercial = false) {
+        const trueOccupancy = /* from time prior + randomness */;
+        const wifiDevices = this.simulateWiFiDevices(trueOccupancy, isCommercial);
+        const noiseDb = this.simulateNoiseLevel(trueOccupancy, isCommercial);
+        const appliances = this.simulateAppliances(trueOccupancy, hour, isCommercial);
+        return this.fuseOccupancy(hour, wifiDevices, noiseDb, appliances, isCommercial);
     }
 }
+```
+
+**UI Panel — Occupancy Intelligence:**
+```html
+<div class="occupancy-panel" id="occupancy-panel">
+    <h3>Occupancy Intelligence</h3>
+    <div class="occ-signals">
+        <div class="occ-signal">📶 WiFi Devices: <span id="occ-wifi">0</span></div>
+        <div class="occ-signal">🔊 Noise Level: <span id="occ-noise">30</span> dB</div>
+        <div class="occ-signal">💡 Lights On: <span id="occ-lights">0</span></div>
+        <div class="occ-signal">🌀 Fans On: <span id="occ-fans">0</span></div>
+        <div class="occ-signal">🖥️ Monitors On: <span id="occ-monitors">0</span></div>
+    </div>
+    <div id="occ-fused" class="occ-fused">Fused Estimate: 0 people</div>
+</div>
 ```
 
 ---
@@ -1431,34 +1478,158 @@ class IoTSensorNetwork {
 
 ---
 
-## 4. Multi-Environment Configuration (Switchable Presets)
+## 4. Dual-Axis Configuration System (Environment × Audience)
 
-The system supports **three distinct environment presets** that can be switched live during the demo via a dropdown. Each preset defines a completely different room topology, furniture layout, window orientations, and inter-room thermal connections. The physics engine, controllers, and all visualizations adapt instantly on switch.
+The system uses a **2×2 matrix** for configuration, combining two independent axes:
+- **Environment Axis:** 🏠 Household vs 🏬 Commercial (room topology, furniture, thermal connections)
+- **Audience Axis:** 💎 Premium vs 💰 Economy (controller optimization weights, comfort tolerance, cost sensitivity)
 
-### Why This Matters for Judges
-A single-room demo proves the math works. A **multi-environment live switch** proves the system is **universally deployable** — residential, commercial, industrial — without changing a single line of code.
+This produces **4 distinct operating modes** switchable live during the demo:
+
+| | 🏠 Household | 🏬 Commercial |
+|--|---|---|
+| **💎 Premium** | Max comfort, aggressive HVAC, blinds open for light | Server room always cooled, meeting rooms pre-cooled for scheduled meetings |
+| **💰 Economy** | Blinds close first, pre-cool during off-peak, ±2°F tolerance | Auto-off in empty zones, carbon tracking, lights/fans awareness |
 
 ---
 
-### Preset 1: 🏠 Single Room (Studio Apartment)
-- **Use Case:** Compact residential space. Ideal for demonstrating core solar-furniture collision physics in isolation.
-- **Layout:** One large west-facing room (600×450px) with 2 windows (west + south).
+### 4A. Environment Presets
+
+#### 🏠 Household (3-Room Apartment)
+- **Use Case:** Residential space. Solar heat through windows is the primary threat.
+- **Layout:** Living Room (west, 400×300), Bedroom (east, 350×250), Kitchen (north, 350×250)
 - **Furniture:**
 
-| Object | Thermal Mass ($C_{thermal}$) | Why It Matters |
-|--------|-----|------|
-| Dark Leather Sofa | 0.90 | Absorbs and radiates heat for hours. Primary threat object. |
-| Wooden Desk | 0.55 | Moderate heat absorber near window. |
-| Dark Area Rug | 0.75 | Large surface area, traps floor-level heat. |
-| TV Console | 0.30 | Low mass, heats/cools quickly. |
-| Queen Bed | 0.60 | Significant thermal battery. |
+| Room | Objects | Thermal Mass | Appliances |
+|------|---------|-------------|------------|
+| Living Room | Dark Sofa (0.90), Glass Table (0.15), Dark Rug (0.75) | High solar absorption | 3 lights, 1 fan, 1 monitor |
+| Bedroom | Bed Frame (0.55), Dark Curtains (0.65) | Morning sun absorption | 2 lights, 1 fan |
+| Kitchen | Granite Counter (0.70), Refrigerator (0.30) | Cooking heat retention | 2 lights, 1 fan |
 
-- **Thermal Connections:** None (single zone). All heat stays in one room.
-- **Demo Story:** *"Watch the sun move across a studio apartment. The dark sofa absorbs heat like a battery and the AI pre-closes the blinds before it even gets warm."*
+- **Thermal Connections:** LR↔Bedroom (wall, 0.15), LR↔Kitchen (door, 0.60), Bedroom↔Kitchen (wall, 0.15)
+- **Occupancy Params:** max 4 people, 3 baseline WiFi IoT devices, 2.0 devices/person, 30 dB base noise
+
+#### 🏬 Commercial (Office + Server Room)
+- **Use Case:** Commercial HVAC with high-occupancy and constant internal heat from servers.
+- **Layout:** Open-Plan Floor (south, 700×350, 2 window banks), Glass Meeting Room (south, 250×200), Server Closet (no windows, 250×180, target 65°F)
+- **Furniture:**
+
+| Room | Objects | Thermal Mass | Special |
+|------|---------|-------------|---------|
+| Open Floor | 2× Desk Clusters (0.45 each), Dark Carpet (0.80), Printer (0.35) | 12 lights, 4 fans, 16 monitors |
+| Meeting Room | Conference Table (0.70), Projector (0.10) | 4 lights, 1 fan, 2 monitors |
+| **Server Closet** | **2× Server Racks (0.95 each, storedHeat=0.5)**, UPS Bank (0.40, storedHeat=0.2) | **1 light, 6 fans** — 24/7 heat generation |
+
+- **Thermal Connections:** Floor↔Meeting (door, 0.60), Floor↔Server (wall, 0.15)
+- **Occupancy Params:** max 25 people, 8 baseline WiFi IoT devices, 2.5 devices/person, 35 dB base noise
 
 ---
 
-### Preset 2: 🏢 Residential Building (3-Room Apartment)
+### 4B. Audience Profiles (Controller Optimization Weights)
+
+The audience profile modifies **how aggressively** the controller optimizes. Both profiles use the same physics engine and the same controller algorithms — only the **cost function weights** change.
+
+#### 💎 Premium (Rich Audience — Comfort-First)
+
+| Parameter | Value | Effect |
+|-----------|-------|--------|
+| `tempTolerance` | ±0.5°F | Must maintain exact setpoint |
+| `energyPenaltyWeight` | 0.01 | Virtually ignores electricity cost |
+| `carbonPenaltyWeight` | 0.01 | Ignores carbon emissions |
+| `comfortPenaltyWeight` | 5.0 | Comfort is 5× more important than cost |
+| `blindsStrategy` | `'comfort'` | Keep blinds open for natural light and views |
+| `blindsCloseThreshold` | 0.8 | Only close for extreme heat threats (spike > 0.8) |
+| `preCoolMinutes` | 30 | Start HVAC 30 min before predicted heat arrival |
+| `hvacMaxPower` | 100% | Allow full blast |
+| `hvacMinResponse` | 20% | Always run at ≥20% if any deviation detected |
+| `acUnitCapacityKW` | 5.0 | Larger premium AC unit installed |
+| `displayCostSavings` | false | Don't show cost panel — irrelevant to this user |
+| `displayComfortScore` | true | Prominently show PMV comfort gauge |
+
+**MPC Cost Function (Premium):**
+$$J_{premium} = \sum_{k=0}^{H} \left[ 5.0 \cdot (T_k - T_{target})^2 + 0.01 \cdot P_k^2 \right]$$
+
+#### 💰 Economy (Mid-Range Audience — Cost-Efficient)
+
+| Parameter | Value | Effect |
+|-----------|-------|--------|
+| `tempTolerance` | ±2.0°F | Wider acceptable comfort band |
+| `energyPenaltyWeight` | 0.5 | Heavily penalizes energy consumption |
+| `carbonPenaltyWeight` | 0.3 | Moderate carbon-consciousness |
+| `comfortPenaltyWeight` | 1.0 | Standard comfort weight |
+| `blindsStrategy` | `'efficiency'` | Close blinds aggressively to avoid using AC |
+| `blindsCloseThreshold` | 0.2 | Close even for small heat threats (spike > 0.2) |
+| `preCoolMinutes` | 15 | Conservative pre-cooling window |
+| `hvacMaxPower` | 75% | Cap HVAC output to save energy |
+| `hvacMinResponse` | 0% | Allow AC to fully turn off |
+| `targetOvershoot` | 1.0°F | Allow room to be 1°F below target to save energy |
+| `acUnitCapacityKW` | 3.5 | Standard AC unit |
+| `displayCostSavings` | true | Show savings panel prominently |
+| `displayComfortScore` | false | De-emphasize comfort gauge |
+
+**MPC Cost Function (Economy):**
+$$J_{economy} = \sum_{k=0}^{H} \left[ 1.0 \cdot (T_k - T_{target})^2 + 0.5 \cdot P_k \cdot C_{TOU}(k) + 0.3 \cdot P_k \cdot I_{carbon}(k) \right]$$
+
+Where $C_{TOU}(k)$ is the Time-of-Use electricity price at timestep $k$ and $I_{carbon}(k)$ is the grid carbon intensity.
+
+---
+
+### 4C. Implementation
+
+```javascript
+// config.js — Dual-axis configuration
+CONFIG.ENVIRONMENTS = {
+    household:  { name: '🏠 Household', isCommercial: false, rooms: [...], connections: [...] },
+    commercial: { name: '🏬 Commercial', isCommercial: true,  rooms: [...], connections: [...] }
+};
+CONFIG.AUDIENCE_PROFILES = {
+    premium: { name: '💎 Premium', tempTolerance: 0.5, energyPenaltyWeight: 0.01, ... },
+    economy: { name: '💰 Economy', tempTolerance: 2.0, energyPenaltyWeight: 0.5, ... }
+};
+CONFIG.ACTIVE_ENVIRONMENT = 'household';
+CONFIG.ACTIVE_AUDIENCE = 'economy';
+
+// Helper functions
+function getActiveEnvironment() { return CONFIG.ENVIRONMENTS[CONFIG.ACTIVE_ENVIRONMENT]; }
+function getActiveAudience() { return CONFIG.AUDIENCE_PROFILES[CONFIG.ACTIVE_AUDIENCE]; }
+function isCommercialMode() { return getActiveEnvironment().isCommercial; }
+function getProfileLabel() { /* returns e.g. "💎 🏬 Premium Commercial" */ }
+
+// UI Switchers (in main.js)
+document.getElementById('env-select').addEventListener('change', (e) => {
+    CONFIG.ACTIVE_ENVIRONMENT = e.target.value;
+    initState(); initModules(); updateProfileBadge();
+});
+document.getElementById('audience-select').addEventListener('change', (e) => {
+    CONFIG.ACTIVE_AUDIENCE = e.target.value;
+    initState(); initModules(); updateProfileBadge();
+});
+```
+
+### HTML Dropdowns
+```html
+<select id="env-select">
+    <option value="household" selected>🏠 Household (Apartment)</option>
+    <option value="commercial">🏬 Commercial (Office)</option>
+</select>
+<select id="audience-select">
+    <option value="premium">💎 Premium (Comfort-First)</option>
+    <option value="economy" selected>💰 Economy (Cost-Efficient)</option>
+</select>
+<div id="profile-badge" class="profile-badge">💰 🏠 Economy Household</div>
+```
+
+---
+
+---
+
+
+
+
+---
+
+
+
 - **Use Case:** Multi-zone residential. Demonstrates inter-room thermal diffusion and per-zone independent control.
 - **Layout:**
   - **Living Room** — west-facing, 400×300px, 1 window
@@ -2178,7 +2349,9 @@ function simulationTick(timestamp) {
 | T3 | Electricity Cost + Carbon Tracker | economics.js (M14) | `EconomicsTracker` | ✅ |
 | T4 | Cloud Cover Integration | sun.js (M2) | `getSunIntensity(hour, cloud)` | ✅ |
 | T5 | Smart Blind Control | blinds.js (M8) | `SmartBlindController` | ✅ |
-| T6 | Multi-Environment Presets (Room/Building/Office) | config.js, main.js, controls.js | `CONFIG.ENVIRONMENTS`, `getActiveEnvironment()` | ✅ |
+| T6 | Multi-Environment Presets (Household/Commercial) | config.js, main.js, controls.js | `CONFIG.ENVIRONMENTS`, `getActiveEnvironment()` | ✅ |
+| T7 | Audience Profiles (Premium/Economy) | config.js, main.js, controller.js, blinds.js | `CONFIG.AUDIENCE_PROFILES`, `getActiveAudience()` | ✅ |
+| T8 | Multi-Signal Occupancy Fusion (WiFi/Noise/Lights/Fans) | occupancy.js | `StochasticOccupancyModel.fuseOccupancy()` | ✅ |
 
 ---
 

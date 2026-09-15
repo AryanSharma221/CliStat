@@ -33,7 +33,7 @@ climate-thermostat/
     ├── heatmap.js        # Thermal heatmap diffusion
     ├── physics.js        # Multi-room temp updates
     ├── predictor.js      # Q_predicted (5 vectors)
-    ├── occupancy.js      # Stochastic occupancy model
+    ├── occupancy.js      # Multi-signal occupancy fusion (WiFi, Noise, Lights, Fans)
     ├── controller.js     # PID+FF, MPC, RL, Self-Tuner
     ├── bangbang.js       # Standard thermostat baseline
     ├── blinds.js         # Smart blind controller
@@ -116,7 +116,7 @@ climate-thermostat/
 |------|------|------|----------|------|
 | 2:00–2:30 | `weather.js` | Implement `fetchCurrentWeather()` using WeatherAPI `/current.json`. Return `{tempF, humidity, cloud, condition, uv}`. Add fallback data on fetch failure. Implement `fetchHourlyForecast()` using `/forecast.json?days=3`. Parse hourly array. | 🔴 | 30m |
 | 2:30–3:00 | `weather.js` + `main.js` | Wire weather fetch into `main.js` init. Call `fetchCurrentWeather()` on load, store in `state.weather`. Set up 10-minute polling interval `setInterval(fetchCurrentWeather, 600000)`. Update weather badge DOM element. | 🔴 | 30m |
-| 3:00–3:30 | `occupancy.js` | Implement `StochasticOccupancyModel` class — schedule object mapping hours to `{mean, std}`. `getExpectedOccupancy(hour)` does linear interpolation between schedule entries. `getUncertaintyBand(hour)` returns `{low, high}`. | 🔴 | 30m |
+| 3:00–3:30 | `occupancy.js` | Implement `StochasticOccupancyModel` class with **4-signal fusion**: (1) Time-based prior with separate household/commercial schedules, (2) WiFi device count (2 devices/person + IoT baseline), (3) Ambient noise level (30 dB base + 7 dB/person), (4) Appliance state (lights, fans, monitors). `fuseOccupancy()` does weighted average (WiFi=40%, Appliance=25%, Noise=20%, Time=15%). Returns `{ fused, signals, weights }`. | 🔴 | 30m |
 | 3:30–4:00 | `predictor.js` | Implement `calculateQPredicted(intersections, sunIntensity, occupancyModel, weather, rooms, dt)` — compute all 5 vectors: (1) Solar = Σ(intensity × area × thermalMass), (2) Occupancy = E[N] × 0.12, (3) Envelope = 0.35 × 45 × ΔT, (4) Humidity = 0.003 × Δhumidity × 45, (5) Decay = Σ(storedHeat × 0.1) with exponential decay. Return breakdown object. | 🔴 | 30m |
 | 4:00–4:30 | `bangbang.js` | Implement `BangBangController` class — `compute(currentTemp)` returns 100% if above threshold, 0% if below threshold-hysteresis. | 🔴 | 10m |
 | 4:00–4:30 | `controller.js` | Implement `FeedForwardPIDController` class — `compute(currentTemp, targetTemp, qPredicted, dt)`. P = Kp × error. Integral with anti-windup clamping ±50. D = Kd × (error - prev) / dt. FF = Kff × qPredicted. Output clamped 0–100%. | 🔴 | 20m |
@@ -402,7 +402,7 @@ If running behind schedule, cut features in this exact order:
 | 10 | Multi-Room Physics | `physics.js` | 2 | A | 🔴 |
 | 11 | Thermal Diffusion | `physics.js` | 2 | A | 🔴 |
 | 23 | Weather Forecast | `weather.js` | 2 | B | 🔴 |
-| 22 | Stochastic Occupancy | `occupancy.js` | 2 | B | 🔴 |
+| 22 | Multi-Signal Occupancy Fusion | `occupancy.js` | 2 | B | 🔴 |
 | 9 | Humidity/Latent Load | `predictor.js` | 2 | B | 🔴 |
 | — | Bang-Bang Controller | `bangbang.js` | 2 | B | 🔴 |
 | — | PID+FF Controller | `controller.js` | 2 | B | 🔴 |
@@ -419,6 +419,12 @@ If running behind schedule, cut features in this exact order:
 | 14 | Sankey Diagram | `sankey.js` | 4 | A | 🟡 |
 | — | UI Controls (11 controls) | `controls.js` | 4 | B | 🔴 |
 | 15 | Historical Playback | `playback.js` | 4 | B | 🟡 |
-| T6 | Multi-Environment Presets | `config.js` | 1 | B | 🔴 |
+| T6 | Household vs Commercial Presets | `config.js` | 1 | B | 🔴 |
 | T6 | Environment Switcher UI | `controls.js`, `index.html` | 1 | A | 🔴 |
 | T6 | Environment-Aware Init | `main.js` | 1 | B | 🔴 |
+| T7 | Premium vs Economy Audience Profiles | `config.js` | 1 | B | 🔴 |
+| T7 | Audience Switcher UI + Profile Badge | `index.html`, `main.js`, `style.css` | 1 | A | 🔴 |
+| T7 | Audience-Aware MPC Cost Function | `controller.js` | 3 | B | 🔴 |
+| T7 | Audience-Aware Blind Strategy | `blinds.js` | 3 | B | 🟡 |
+| — | Occupancy Intelligence Panel UI | `index.html`, `style.css` | 1 | A | 🔴 |
+
