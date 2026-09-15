@@ -204,112 +204,6 @@ class UIController {
             
         this.timeSlider.value = time;
         
-        // --- Thermodynamic Logic ---
-        const targetTemp = parseFloat(this.targetTempSlider.value);
-        const day = this.simulation.params.dayOfYear;
-        
-        // Base Temp by Season OR Live Weather
-        let baseTemp = 21.0; 
-        if (this.weatherData && this.weatherData.tempC !== undefined && this.weatherData.tempC !== null) {
-            baseTemp = this.weatherData.tempC; // Start with real weather API (Celsius)
-            
-            // Apply artificial seasonal modifiers so the dropdown still functions!
-            if (day >= 150 && day <= 240) baseTemp += 4.5; // Summer: even hotter
-            else if (day < 60 || day > 300) baseTemp -= 11.0; // Winter: artificial cooling
-            else baseTemp -= 3.0; // Spring/Fall: mild
-            
-        } else {
-            if (day >= 150 && day <= 240) baseTemp = 26.0; // Summer
-            else if (day < 60 || day > 300) baseTemp = 15.0; // Winter
-        }
-
-        // Solar Gain (Peaks around 14:00)
-        let solarGain = 0;
-        if (time > 7 && time < 21) {
-            solarGain = Math.sin((time - 7) / 14 * Math.PI) * 6.6; // Max +6.6C from sun
-            const peakDiff = Math.abs(time - 14.0);
-            solarGain = Math.max(0, 8.0 - peakDiff * 1.5);
-            
-            // Apply Live Cloud Cover from API (Clouds reduce solar gain by up to 70%)
-            if (this.weatherData && this.weatherData.cloudCover !== undefined) {
-                solarGain *= (1.0 - (this.weatherData.cloudCover / 100) * 0.7);
-            }
-        }
-        
-        // Occupancy Heat Gain (+0.14C per person)
-        const occGain = this.settings.occupancy * 0.14;
-
-        // Raw environmental temperature before HVAC
-        const rawIndoorTemp = baseTemp + solarGain + occGain;
-
-        // --- HVAC CAPACITY LIMITS & PID CONTROL ---
-        let rawDeviation = rawIndoorTemp - targetTemp;
-        
-        // Initialize AI Controller if not present
-        if (!this.hvacController) {
-            // Kp=1.5, Ki=0.1, Kd=0.05, Kff=0.2 (arbitrary tuning for smooth response)
-            this.hvacController = new FeedForwardPIDController(1.5, 0.1, 0.05, 0.2);
-        }
-
-        const heatLoadKw = (solarGain / 8.0) * 8.5 + (this.settings.occupancy * 0.15);
-        const predictedHeatLoadKW = heatLoadKw;
-        
-        // Use Aryan's PID Controller to compute power % needed (0-100)
-        // We pass a rough 'dt' of 1/60th of a second for this frame
-        let powerPct = this.hvacController.compute(rawIndoorTemp, targetTemp, predictedHeatLoadKW, 1/60);
-        
-        // Apply HVAC cooling/heating effect to the room
-        // 100% power = 10.0 degrees of temperature pulling power
-        let maxHvacPull = 10.0 * (powerPct / 100);
-        
-        // The HVAC will pull the temp UP if it's too cold, or DOWN if it's too hot
-        let actualHvacDelta = 0;
-        if (Math.abs(rawDeviation) <= maxHvacPull) {
-            actualHvacDelta = rawDeviation;
-        } else {
-            actualHvacDelta = Math.sign(rawDeviation) * maxHvacPull;
-        }
-        
-        let indoorTemp = rawIndoorTemp - actualHvacDelta;
-        this.indoorAvg.innerHTML = indoorTemp.toFixed(1) + '<span class="unit">&deg;C</span>';
-
-        // Actual remaining deviation (if HVAC failed, this will be non-zero)
-        const finalDeviation = indoorTemp - targetTemp;
-        const sign = finalDeviation > 0 ? '+' : (finalDeviation < 0 ? '-' : '');
-        this.deviationVal.textContent = sign + Math.abs(finalDeviation).toFixed(1);
-
-        // Heat Load: Solar + Occupants
-        this.heatLoad.innerHTML = heatLoadKw.toFixed(2) + '<span class="unit">kW</span>';
-
-        // Heat Exchange & Power
-        const exchangeKw = - (actualHvacDelta * 1.08); // 1.08 kW per degree C
-        this.heatExchange.innerHTML = (exchangeKw > 0 ? '+' : '') + exchangeKw.toFixed(2) + '<span class="unit">kW</span>';
-
-        if (exchangeKw < -0.1) {
-            this.heatExchange.className = 'text-accent'; // Cooling
-            this.hvacMode.innerHTML = `cooling active (${this.weatherData.condition}) &bull; zone 01`;
-        } else if (exchangeKw > 0.1) {
-            this.heatExchange.className = 'text-warning'; // Heating
-            this.hvacMode.innerHTML = `heating active (${this.weatherData.condition}) &bull; zone 01`;
-        } else {
-            this.heatExchange.className = 'text-success'; // Standby
-            this.hvacMode.innerHTML = 'hvac standby &bull; optimal';
-        }
-
-        // hvacPower is already computed by the PID controller above (powerPct)
-        this.hvacPower.innerHTML = Math.round(powerPct) + '<span class="unit">%</span>';
-
-        // --- Q PREDICTED / VECTORS ---
-        const solarPct = Math.min(100, (solarGain / 8.0) * 100);
-        const occPct = Math.min(100, (this.settings.occupancy / 20.0) * 100);
-        const envPct = Math.min(100, Math.abs(finalDeviation) * 9.0); // 9% per deg C
-        const decayPct = 5 + Math.random() * 2; // Micro jitter for realism
-
-        this.vecSolar.textContent = Math.round(solarPct) + '%';
-        this.vecOcc.textContent = Math.round(occPct) + '%';
-        this.vecEnv.textContent = Math.round(envPct) + '%';
-        this.vecDecay.textContent = Math.round(decayPct) + '%';
-
         // --- NEXT THERMAL EVENT ---
         if (time < 12) {
             const mins = Math.floor((12 - time) * 60);
@@ -327,7 +221,7 @@ class UIController {
         // --- BACKEND INTEGRATION ---
         this.currentState = {
             timeOfDay: time,
-            dayOfYear: day,
+            dayOfYear: this.simulation.params.dayOfYear,
             weather: this.weatherData,
             occupants: this.settings.occupancy,
             rawEnvironmentalTempCelsius: rawIndoorTemp, // Unmitigated baseline needed for MPC prediction
