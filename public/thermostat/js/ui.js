@@ -1,4 +1,10 @@
 // js/ui.js
+// =============================================================================
+// MEMBER 3 — 3D Visualization & UI Controller
+// -----------------------------------------------------------------------------
+// Drives the dashboard telemetry, thermodynamic simulation loop, and wires
+// Aryan's AI controllers (PID, BangBang) into the live physics engine.
+// =============================================================================
 
 class UIController {
     constructor(simulation) {
@@ -8,10 +14,26 @@ class UIController {
         this.settings = {
             time: 12.0,
             season: 'Summer',
-            latitude: 37.77,
+            latitude: 13.08,       // Chennai latitude
             animateTime: true,  
-            timeSpeed: 1 / 60   
+            timeSpeed: 1 / 60      // 1 real second = 1 sim minute
         };
+
+        // --- CONTROLLER MODE ---
+        this.activeMode = 'predictive'; // 'predictive' (PID+FF) or 'standard' (BangBang)
+        this.hvacController = new FeedForwardPIDController(1.5, 0.1, 0.05, 0.2);
+        this.bangbangController = new BangBangController(0.5);
+
+        // --- ENERGY / COST / CO2 TRACKING ---
+        this.maxHvacCapacityKw = 5.0;  // CONFIG.PHYSICS.HVAC_COOLING_POWER
+        this.gridCarbonIntensity = 0.82; // kg CO2/kWh — India grid average
+        this.smartEnergyKwh = 0;
+        this.baselineEnergyKwh = 0;
+        this.smartCostRupees = 0;
+        this.baselineCostRupees = 0;
+        this.smartCO2Kg = 0;
+        this.baselineCO2Kg = 0;
+        this.lastSimTime = null;      // for delta tracking
 
         this.bindElements();
         this.addEventListeners();
@@ -61,7 +83,7 @@ class UIController {
         
         this.nextEventTime = document.getElementById('next-event-time');
 
-        // New Telemetry Elements
+        // Telemetry Elements
         this.targetTempSlider = document.getElementById('target-temp-slider');
         this.targetTempVal = document.getElementById('target-temp-val');
         this.indoorAvg = document.getElementById('indoor-avg');
@@ -76,17 +98,27 @@ class UIController {
         this.vecEnv = document.getElementById('vec-env');
         this.vecDecay = document.getElementById('vec-decay');
 
-        // New Occupancy and Weather Elements
+        // Occupancy and Weather Elements
         this.occupancySlider = document.getElementById('occupancy-slider');
         this.occupancyVal = document.getElementById('occupancy-val');
         this.weatherStatus = document.getElementById('weather-status');
+
+        // New: Savings & Carbon Elements
+        this.savingsPct = document.getElementById('savings-pct');
+        this.smartKwh = document.getElementById('smart-kwh');
+        this.baselineKwh = document.getElementById('baseline-kwh');
+        this.costSaved = document.getElementById('cost-saved');
+        this.co2Avoided = document.getElementById('co2-avoided');
+        this.carbonRate = document.getElementById('carbon-rate');
+        this.carbonStatus = document.getElementById('carbon-status');
+        this.algoTrace = document.getElementById('algo-trace');
 
         // Init initial button state
         this.playPauseBtn.textContent = this.settings.animateTime ? '⏸' : '▶';
 
         // Init settings defaults
         this.settings.occupancy = 0;
-        this.weatherData = { tempF: null, condition: 'Loading...', cloudCover: 0 };
+        this.weatherData = { tempC: null, condition: 'Loading...', cloudCover: 0 };
         this.fetchWeather();
     }
 
@@ -99,6 +131,7 @@ class UIController {
             
             this.weatherData = {
                 tempC: data.main.temp,
+                humidity: data.main.humidity,
                 condition: data.weather[0].main,
                 cloudCover: data.clouds.all
             };
@@ -159,6 +192,12 @@ class UIController {
             this.settings.animateTime = false;
             this.playPauseBtn.textContent = '▶';
             this.simulation.params.timeOfDay = 12.0;
+            // Reset energy counters
+            this.smartEnergyKwh = 0; this.baselineEnergyKwh = 0;
+            this.smartCostRupees = 0; this.baselineCostRupees = 0;
+            this.smartCO2Kg = 0; this.baselineCO2Kg = 0;
+            this.lastSimTime = null;
+            this.hvacController.reset();
             this.updateStats();
         });
 
@@ -170,28 +209,47 @@ class UIController {
             this.updateStats();
         });
 
-        // Mode Toggles
+        // Mode Toggles — NOW ACTUALLY SWITCH CONTROLLERS
         this.modePredictive.addEventListener('click', () => {
+            this.activeMode = 'predictive';
             this.modePredictive.classList.add('active');
             this.modeStandard.classList.remove('active');
+            this.hvacController.reset();
+            // Reset counters to show fresh comparison
+            this.smartEnergyKwh = 0; this.baselineEnergyKwh = 0;
+            this.smartCostRupees = 0; this.baselineCostRupees = 0;
+            this.smartCO2Kg = 0; this.baselineCO2Kg = 0;
+            this.lastSimTime = null;
         });
 
         this.modeStandard.addEventListener('click', () => {
+            this.activeMode = 'standard';
             this.modeStandard.classList.add('active');
             this.modePredictive.classList.remove('active');
+            // Reset counters to show fresh comparison
+            this.smartEnergyKwh = 0; this.baselineEnergyKwh = 0;
+            this.smartCostRupees = 0; this.baselineCostRupees = 0;
+            this.smartCO2Kg = 0; this.baselineCO2Kg = 0;
+            this.lastSimTime = null;
         });
     }
 
     update(dt) {
         if (this.settings.animateTime) {
             this.settings.time += dt * this.settings.timeSpeed;
-            if (this.settings.time >= 24) this.settings.time = 0;
+            if (this.settings.time >= 24) {
+                this.settings.time = 0;
+                // Reset counters on day rollover
+                this.smartEnergyKwh = 0; this.baselineEnergyKwh = 0;
+                this.smartCostRupees = 0; this.baselineCostRupees = 0;
+                this.smartCO2Kg = 0; this.baselineCO2Kg = 0;
+            }
             this.simulation.params.timeOfDay = this.settings.time;
-            this.updateStats();
+            this.updateStats(true); // true = animation frame (accumulate energy)
         }
     }
 
-    updateStats() {
+    updateStats(isAnimationFrame = false) {
         this.simulation.updateSunPosition();
         
         const time = this.settings.time;
@@ -201,68 +259,94 @@ class UIController {
         const m = Math.floor((time - h) * 60);
         this.clockDisplay.textContent = 
             `${h.toString().padStart(2, '0')}:${m.toString().padStart(2, '0')}`;
-            
         this.timeSlider.value = time;
         
-        // --- Thermodynamic Logic ---
+        // =====================================================================
+        //  THERMODYNAMIC ENGINE
+        // =====================================================================
         const targetTemp = parseFloat(this.targetTempSlider.value);
         const day = this.simulation.params.dayOfYear;
         
-        // Base Temp by Season OR Live Weather
+        // --- 1. BASE TEMPERATURE (Weather API + Seasonal Modifier) ---
         let baseTemp = 21.0; 
         if (this.weatherData && this.weatherData.tempC !== undefined && this.weatherData.tempC !== null) {
-            baseTemp = this.weatherData.tempC; // Start with real weather API (Celsius)
-            
-            // Apply artificial seasonal modifiers so the dropdown still functions!
-            if (day >= 150 && day <= 240) baseTemp += 4.5; // Summer: even hotter
-            else if (day < 60 || day > 300) baseTemp -= 11.0; // Winter: artificial cooling
-            else baseTemp -= 3.0; // Spring/Fall: mild
-            
+            baseTemp = this.weatherData.tempC;
+            if (day >= 150 && day <= 240) baseTemp += 4.5;       // Summer: hotter
+            else if (day < 60 || day > 300) baseTemp -= 11.0;    // Winter: cooler
+            else baseTemp -= 3.0;                                  // Spring/Fall: mild
         } else {
-            if (day >= 150 && day <= 240) baseTemp = 26.0; // Summer
-            else if (day < 60 || day > 300) baseTemp = 15.0; // Winter
+            if (day >= 150 && day <= 240) baseTemp = 26.0;
+            else if (day < 60 || day > 300) baseTemp = 15.0;
         }
 
-        // Solar Gain (Peaks around 14:00)
-        let solarGain = 0;
-        if (time > 7 && time < 21) {
-            solarGain = Math.sin((time - 7) / 14 * Math.PI) * 6.6; // Max +6.6C from sun
-            const peakDiff = Math.abs(time - 14.0);
-            solarGain = Math.max(0, 8.0 - peakDiff * 1.5);
-            
-            // Apply Live Cloud Cover from API (Clouds reduce solar gain by up to 70%)
-            if (this.weatherData && this.weatherData.cloudCover !== undefined) {
-                solarGain *= (1.0 - (this.weatherData.cloudCover / 100) * 0.7);
-            }
+        // --- 2. SOLAR GAIN (5-vector Q_predicted approach) ---
+        // Use getSunIntensity() from sun.js for cloud-attenuated solar curve
+        const cloudCover = (this.weatherData && this.weatherData.cloudCover) || 0;
+        const sunIntensity = getSunIntensity(time, cloudCover);
+        
+        // Solar heat gain through windows (simplified: 2 windows × 4m² × 0.4 SHGC)
+        const windowArea = 8.0;  // m² total glazing
+        const SHGC = 0.4;       // Solar Heat Gain Coefficient
+        const solarIrradiance = 1000; // W/m² peak (standard)
+        const qSolarKw = sunIntensity * windowArea * SHGC * solarIrradiance / 1000;
+        
+        // Convert solar kW to temperature gain via thermal capacitance
+        // C_thermal ≈ 100 kJ/°C for a typical room (air + furniture)
+        const thermalCapacitance = 100; // kJ/°C
+        const solarGainDegC = (qSolarKw / thermalCapacitance) * 3600; // °C per hour, displayed as instant offset
+
+        // --- 3. OCCUPANCY HEAT GAIN (ASHRAE 55: 120W per person) ---
+        const qOccupancyKw = this.settings.occupancy * 0.12; // kW (CONFIG.PHYSICS.ASHRAE_METABOLIC_HEAT)
+        const occGainDegC = (qOccupancyKw / thermalCapacitance) * 3600;
+
+        // --- 4. ENVELOPE LOAD (heat leaking through walls from outdoor temp) ---
+        const outdoorTemp = baseTemp;
+        const U_envelope = 0.35;   // W/(m²·K) — CONFIG.PHYSICS.U_ENVELOPE
+        const A_envelope = 45;     // m² — CONFIG.PHYSICS.A_ENVELOPE
+        const deltaT_envelope = Math.max(0, outdoorTemp - targetTemp);
+        const qEnvelopeKw = (U_envelope * A_envelope * deltaT_envelope) / 1000;
+        const envelopeGainDegC = (qEnvelopeKw / thermalCapacitance) * 3600;
+
+        // --- 5. THERMAL DECAY (stored heat re-radiating from furniture) ---
+        const qDecayKw = qSolarKw * 0.08; // 8% of solar load re-radiates as stored heat
+        const decayGainDegC = (qDecayKw / thermalCapacitance) * 3600;
+
+        // --- TOTAL PREDICTED HEAT LOAD ---
+        const totalHeatLoadKw = qSolarKw + qOccupancyKw + qEnvelopeKw + qDecayKw;
+        const totalGainDegC = solarGainDegC + occGainDegC + envelopeGainDegC + decayGainDegC;
+        
+        // Raw indoor temperature before any HVAC intervention
+        const rawIndoorTemp = baseTemp + totalGainDegC;
+
+        // =====================================================================
+        //  HVAC CONTROLLER (Active mode: PID+FF or BangBang)
+        // =====================================================================
+        const rawDeviation = rawIndoorTemp - targetTemp;
+        const maxHvacDelta = 10.0; // Physical ceiling: HVAC can alter temp by max 10°C
+        
+        // Compute simulation dt for PID (avoid using hardcoded 1/60)
+        let simDt = 1.0 / 60.0; // default
+        if (isAnimationFrame && this.lastSimTime !== null) {
+            simDt = Math.max(0.001, this.settings.time - this.lastSimTime);
+            if (simDt > 1.0) simDt = 1.0 / 60.0; // guard against time jumps/wraps
         }
-        
-        // Occupancy Heat Gain (+0.14C per person)
-        const occGain = this.settings.occupancy * 0.14;
 
-        // Raw environmental temperature before HVAC
-        const rawIndoorTemp = baseTemp + solarGain + occGain;
-
-        // --- HVAC CAPACITY LIMITS & PID CONTROL ---
-        let rawDeviation = rawIndoorTemp - targetTemp;
-        
-        // Initialize AI Controller if not present
-        if (!this.hvacController) {
-            // Kp=1.5, Ki=0.1, Kd=0.05, Kff=0.2 (arbitrary tuning for smooth response)
-            this.hvacController = new FeedForwardPIDController(1.5, 0.1, 0.05, 0.2);
+        // --- ACTIVE CONTROLLER ---
+        let powerPct;
+        let controllerLabel;
+        if (this.activeMode === 'predictive') {
+            powerPct = this.hvacController.compute(rawIndoorTemp, targetTemp, totalHeatLoadKw, simDt);
+            controllerLabel = 'PID + Feed-Forward';
+        } else {
+            powerPct = this.bangbangController.compute(rawIndoorTemp, targetTemp);
+            controllerLabel = 'Bang-Bang (On/Off)';
         }
 
-        const heatLoadKw = (solarGain / 8.0) * 8.5 + (this.settings.occupancy * 0.15);
-        const predictedHeatLoadKW = heatLoadKw;
-        
-        // Use Aryan's PID Controller to compute power % needed (0-100)
-        // We pass a rough 'dt' of 1/60th of a second for this frame
-        let powerPct = this.hvacController.compute(rawIndoorTemp, targetTemp, predictedHeatLoadKW, 1/60);
-        
-        // Apply HVAC cooling/heating effect to the room
-        // 100% power = 10.0 degrees of temperature pulling power
-        let maxHvacPull = 10.0 * (powerPct / 100);
-        
-        // The HVAC will pull the temp UP if it's too cold, or DOWN if it's too hot
+        // --- BASELINE CONTROLLER (always runs in shadow for comparison) ---
+        const baselinePower = this.bangbangController.compute(rawIndoorTemp, targetTemp);
+
+        // --- APPLY HVAC EFFECT ---
+        let maxHvacPull = maxHvacDelta * (powerPct / 100);
         let actualHvacDelta = 0;
         if (Math.abs(rawDeviation) <= maxHvacPull) {
             actualHvacDelta = rawDeviation;
@@ -270,45 +354,140 @@ class UIController {
             actualHvacDelta = Math.sign(rawDeviation) * maxHvacPull;
         }
         
-        let indoorTemp = rawIndoorTemp - actualHvacDelta;
+        const indoorTemp = rawIndoorTemp - actualHvacDelta;
+        const exchangeKw = -(actualHvacDelta * (this.maxHvacCapacityKw / maxHvacDelta));
+
+        // =====================================================================
+        //  ENERGY / COST / CO2 ACCUMULATION (only during animation)
+        // =====================================================================
+        if (isAnimationFrame && this.lastSimTime !== null) {
+            const dtHours = Math.max(0, Math.min(simDt, 0.5)); // hours of simulation time
+            
+            // Time-of-Use pricing (Indian grid rates)
+            const isPeak = (time >= 16 && time <= 21);
+            const ratePerKwh = isPeak ? 8.0 : 4.5; // ₹/kWh
+            
+            // Smart controller energy
+            const smartPowerKw = (powerPct / 100) * this.maxHvacCapacityKw;
+            this.smartEnergyKwh += smartPowerKw * dtHours;
+            this.smartCostRupees += smartPowerKw * dtHours * ratePerKwh;
+            this.smartCO2Kg += smartPowerKw * dtHours * this.gridCarbonIntensity;
+            
+            // Baseline (BangBang) energy — what a dumb thermostat would use
+            const baselinePowerKw = (baselinePower / 100) * this.maxHvacCapacityKw;
+            this.baselineEnergyKwh += baselinePowerKw * dtHours;
+            this.baselineCostRupees += baselinePowerKw * dtHours * ratePerKwh;
+            this.baselineCO2Kg += baselinePowerKw * dtHours * this.gridCarbonIntensity;
+        }
+        if (isAnimationFrame) {
+            this.lastSimTime = this.settings.time;
+        }
+
+        // =====================================================================
+        //  UPDATE DASHBOARD
+        // =====================================================================
+        
+        // Indoor Average
         this.indoorAvg.innerHTML = indoorTemp.toFixed(1) + '<span class="unit">&deg;C</span>';
 
-        // Actual remaining deviation (if HVAC failed, this will be non-zero)
+        // Deviation
         const finalDeviation = indoorTemp - targetTemp;
         const sign = finalDeviation > 0 ? '+' : (finalDeviation < 0 ? '-' : '');
         this.deviationVal.textContent = sign + Math.abs(finalDeviation).toFixed(1);
 
-        // Heat Load: Solar + Occupants
-        this.heatLoad.innerHTML = heatLoadKw.toFixed(2) + '<span class="unit">kW</span>';
+        // Predicted Heat Load
+        this.heatLoad.innerHTML = totalHeatLoadKw.toFixed(2) + '<span class="unit">kW</span>';
 
-        // Heat Exchange & Power
-        const exchangeKw = - (actualHvacDelta * 1.08); // 1.08 kW per degree C
+        // Heat Exchange
         this.heatExchange.innerHTML = (exchangeKw > 0 ? '+' : '') + exchangeKw.toFixed(2) + '<span class="unit">kW</span>';
-
         if (exchangeKw < -0.1) {
-            this.heatExchange.className = 'text-accent'; // Cooling
-            this.hvacMode.innerHTML = `cooling active (${this.weatherData.condition}) &bull; zone 01`;
+            this.heatExchange.className = 'text-accent';
+            this.hvacMode.innerHTML = `cooling active (${this.weatherData.condition || 'N/A'}) &bull; ${controllerLabel}`;
         } else if (exchangeKw > 0.1) {
-            this.heatExchange.className = 'text-warning'; // Heating
-            this.hvacMode.innerHTML = `heating active (${this.weatherData.condition}) &bull; zone 01`;
+            this.heatExchange.className = 'text-warning';
+            this.hvacMode.innerHTML = `heating active (${this.weatherData.condition || 'N/A'}) &bull; ${controllerLabel}`;
         } else {
-            this.heatExchange.className = 'text-success'; // Standby
-            this.hvacMode.innerHTML = 'hvac standby &bull; optimal';
+            this.heatExchange.className = 'text-success';
+            this.hvacMode.innerHTML = `hvac standby &bull; ${controllerLabel}`;
         }
 
-        // hvacPower is already computed by the PID controller above (powerPct)
+        // HVAC Power
         this.hvacPower.innerHTML = Math.round(powerPct) + '<span class="unit">%</span>';
 
-        // --- Q PREDICTED / VECTORS ---
-        const solarPct = Math.min(100, (solarGain / 8.0) * 100);
-        const occPct = Math.min(100, (this.settings.occupancy / 20.0) * 100);
-        const envPct = Math.min(100, Math.abs(finalDeviation) * 9.0); // 9% per deg C
-        const decayPct = 5 + Math.random() * 2; // Micro jitter for realism
+        // --- CARBON FOOTPRINT (dynamic) ---
+        if (this.carbonRate) {
+            const currentCarbonKgH = (powerPct / 100) * this.maxHvacCapacityKw * this.gridCarbonIntensity;
+            this.carbonRate.innerHTML = currentCarbonKgH.toFixed(2) + '<span class="unit">kg/h</span>';
+            this.carbonRate.className = currentCarbonKgH > 2.0 ? 'text-warning' : (currentCarbonKgH > 0.5 ? '' : 'text-success');
+            if (this.carbonStatus) {
+                this.carbonStatus.textContent = (time >= 16 && time <= 21) ? 'peak hours ⚡' : 'off-peak 🌿';
+            }
+        }
+
+        // --- ENERGY SAVINGS vs BASELINE ---
+        if (this.savingsPct && this.baselineEnergyKwh > 0.001) {
+            const savingsPercent = ((this.baselineEnergyKwh - this.smartEnergyKwh) / this.baselineEnergyKwh) * 100;
+            const displayPct = Math.round(savingsPercent);
+            this.savingsPct.innerHTML = (displayPct >= 0 ? '-' : '+') + Math.abs(displayPct) + '<span class="unit">%</span>';
+            this.savingsPct.className = displayPct >= 0 ? 'text-success' : 'text-warning';
+        } else if (this.savingsPct) {
+            this.savingsPct.innerHTML = '0<span class="unit">%</span>';
+        }
+        if (this.smartKwh) this.smartKwh.textContent = this.smartEnergyKwh.toFixed(3);
+        if (this.baselineKwh) this.baselineKwh.textContent = this.baselineEnergyKwh.toFixed(3);
+        if (this.costSaved) {
+            const saved = this.baselineCostRupees - this.smartCostRupees;
+            this.costSaved.textContent = Math.max(0, saved).toFixed(2);
+        }
+        if (this.co2Avoided) {
+            const avoided = this.baselineCO2Kg - this.smartCO2Kg;
+            this.co2Avoided.textContent = Math.max(0, avoided).toFixed(3);
+        }
+
+        // --- Q PREDICTED / VECTORS (Proportional, summing to ~100%) ---
+        const qTotal = totalHeatLoadKw || 0.001; // avoid div by zero
+        const solarPct = (qSolarKw / qTotal) * 100;
+        const occPct = (qOccupancyKw / qTotal) * 100;
+        const envPct = (qEnvelopeKw / qTotal) * 100;
+        const decayPct = (qDecayKw / qTotal) * 100;
 
         this.vecSolar.textContent = Math.round(solarPct) + '%';
         this.vecOcc.textContent = Math.round(occPct) + '%';
         this.vecEnv.textContent = Math.round(envPct) + '%';
         this.vecDecay.textContent = Math.round(decayPct) + '%';
+
+        // --- ALGORITHM DECISION TRACE ---
+        if (this.algoTrace) {
+            let traceHtml = '';
+            if (this.activeMode === 'predictive' && this.hvacController.lastError !== undefined) {
+                const c = this.hvacController;
+                traceHtml = `
+                    <div><b>Sensor:</b> env=${rawIndoorTemp.toFixed(1)}°C → target=${targetTemp.toFixed(1)}°C</div>
+                    <div><b>Mode:</b> ${controllerLabel}</div>
+                    <div style="margin:4px 0; padding:4px; background:rgba(56,189,248,0.08); border-radius:4px;">
+                        <b>P</b>=${c.lastP.toFixed(2)} 
+                        <b>I</b>=${c.lastI.toFixed(2)} 
+                        <b>D</b>=${c.lastD.toFixed(2)} 
+                        <b>FF</b>=${c.lastFF.toFixed(2)}
+                    </div>
+                    <div><b>Output:</b> ${powerPct.toFixed(0)}% → ${Math.abs(exchangeKw).toFixed(1)} kW ${exchangeKw < 0 ? 'cooling' : 'heating'}</div>
+                    <div><b>Baseline:</b> ${baselinePower}% ${baselinePower > powerPct ? '⬆️ +' + (baselinePower - powerPct).toFixed(0) + '%' : baselinePower < powerPct ? '⬇️' : '='}</div>
+                    <div style="margin-top:4px;color:${finalDeviation > 1 ? '#f97316' : '#22c55e'}"><b>Status:</b> ${Math.abs(finalDeviation) < 0.5 ? '✅ At setpoint' : (powerPct >= 99 ? '⚠️ HVAC at capacity' : '🔄 Converging...')}</div>
+                `;
+            } else {
+                traceHtml = `
+                    <div><b>Sensor:</b> env=${rawIndoorTemp.toFixed(1)}°C → target=${targetTemp.toFixed(1)}°C</div>
+                    <div><b>Mode:</b> ${controllerLabel}</div>
+                    <div style="margin:4px 0; padding:4px; background:rgba(248,113,113,0.08); border-radius:4px;">
+                        <b>Decision:</b> ${powerPct > 0 ? 'ON (100%)' : 'OFF (0%)'}
+                    </div>
+                    <div><b>Hysteresis:</b> ±0.5°C deadband</div>
+                    <div><b>PID would use:</b> ${this.hvacController.compute(rawIndoorTemp, targetTemp, totalHeatLoadKw, simDt).toFixed(0)}%</div>
+                    <div style="margin-top:4px;color:${finalDeviation > 1 ? '#f97316' : '#22c55e'}"><b>Status:</b> ${Math.abs(finalDeviation) < 0.5 ? '✅ At setpoint' : '🔄 Cycling...'}</div>
+                `;
+            }
+            this.algoTrace.innerHTML = traceHtml;
+        }
 
         // --- NEXT THERMAL EVENT ---
         if (time < 12) {
@@ -324,28 +503,42 @@ class UIController {
             this.nextEventTime.innerHTML = `Nighttime thermal decay active`;
         }
 
-        // --- BACKEND INTEGRATION ---
+        // --- BACKEND INTEGRATION STATE ---
         this.currentState = {
             timeOfDay: time,
             dayOfYear: day,
             weather: this.weatherData,
             occupants: this.settings.occupancy,
-            rawEnvironmentalTempCelsius: rawIndoorTemp, // Unmitigated baseline needed for MPC prediction
+            rawEnvironmentalTempCelsius: rawIndoorTemp,
             indoorAvgCelsius: indoorTemp,
             targetTempCelsius: targetTemp,
-            predictedHeatLoadKW: heatLoadKw,
+            controllerMode: this.activeMode,
+            predictedHeatLoadKW: totalHeatLoadKw,
             hvacPowerPercentage: powerPct,
             heatExchangeKW: exchangeKw,
             hvacModeActive: exchangeKw < -0.1 ? 'COOLING' : (exchangeKw > 0.1 ? 'HEATING' : 'STANDBY'),
             qVectors: {
-                solarRadiationPct: solarPct,
-                occupancyGainPct: occPct,
-                envelopeDriftPct: envPct,
-                thermalDecayPct: decayPct
+                solarKw: qSolarKw,
+                occupancyKw: qOccupancyKw,
+                envelopeKw: qEnvelopeKw,
+                decayKw: qDecayKw,
+                totalKw: totalHeatLoadKw,
+                solarPct, occPct, envPct, decayPct
+            },
+            energyTracking: {
+                smartKwh: this.smartEnergyKwh,
+                baselineKwh: this.baselineEnergyKwh,
+                savingsPercent: this.baselineEnergyKwh > 0 
+                    ? ((this.baselineEnergyKwh - this.smartEnergyKwh) / this.baselineEnergyKwh * 100) 
+                    : 0,
+                smartCostRupees: this.smartCostRupees,
+                baselineCostRupees: this.baselineCostRupees,
+                smartCO2Kg: this.smartCO2Kg,
+                baselineCO2Kg: this.baselineCO2Kg
             }
         };
 
-        // Emit an event so external frameworks (React, Vue, Vanilla) can listen easily
+        // Emit event for external frameworks
         document.dispatchEvent(new CustomEvent('simulationUpdated', { 
             detail: this.currentState 
         }));

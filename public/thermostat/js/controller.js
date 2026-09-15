@@ -9,9 +9,13 @@ class FeedForwardPIDController {
         this.integral += error * dt;
         this.integral = Math.max(-50, Math.min(50, this.integral));
         const I = this.Ki * this.integral;
-        const D = this.Kd * ((error - this.previousError) / dt);
+        const safeDt = Math.max(dt, 0.001);
+        const D = this.Kd * ((error - this.previousError) / safeDt);
         this.previousError = error;
         const FF = this.Kff * qPredicted;
+        // Expose internals for Algorithm Trace display
+        this.lastError = error;
+        this.lastP = P; this.lastI = I; this.lastD = D; this.lastFF = FF;
         return Math.max(0, Math.min(100, P + I + D + FF));
     }
     reset() { this.integral = 0; this.previousError = 0; }
