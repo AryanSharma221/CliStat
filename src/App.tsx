@@ -66,10 +66,10 @@ function DemoSection() {
 
         <div className="w-full rounded-2xl overflow-hidden shadow-2xl border-4 border-[#2c2319]" style={{ height: "800px" }}>
           <iframe 
-            src="/thermostat/index.html" 
-            className="w-full h-full border-none"
+            src="/Simulation_Final/index.html" 
+            className="w-full h-full"
             title="Climate Thermostat Simulation"
-          />
+          ></iframe>
         </div>
       </div>
     </section>

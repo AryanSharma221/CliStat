@@ -376,10 +376,10 @@ class UIController {
         // --- APPLY HVAC EFFECT ---
         let maxHvacPull = maxHvacDelta * (powerPct / 100);
         let actualHvacDelta = 0;
-        if (Math.abs(rawDeviation) <= maxHvacPull) {
+        if (Math.abs(rawDeviation) <= Math.abs(maxHvacPull)) {
             actualHvacDelta = rawDeviation;
         } else {
-            actualHvacDelta = Math.sign(rawDeviation) * maxHvacPull;
+            actualHvacDelta = maxHvacPull;
         }
         
         const indoorTemp = rawIndoorTemp - actualHvacDelta;
@@ -588,8 +588,8 @@ class UIController {
 
                 ${section('9. HVAC EFFECT')}
                 <div>maxPull = 10.0 × (power/100) = 10.0 × ${s((powerPct/100).toFixed(2))} = ${w(maxHvacPull.toFixed(1) + '°C')}</div>
-                <div>ΔT_hvac = min(|deviation|, maxPull) × sign</div>
-                <div>ΔT_hvac = min(${s(Math.abs(rawDeviation).toFixed(1))}, ${s(maxHvacPull.toFixed(1))}) = ${w(actualHvacDelta.toFixed(1) + '°C')}</div>
+                <div>T_hvac = min(|deviation|, |maxPull|) x sign</div>
+                <div>T_hvac = min(${s(Math.abs(rawDeviation).toFixed(1))}, ${s(Math.abs(maxHvacPull).toFixed(1))}) * sign = ${w(actualHvacDelta.toFixed(1) + '°C')}</div>
                 <div style="margin-top:4px">exchangeKw = -(ΔT × capacity/maxDelta)</div>
                 <div>exchangeKw = -(${s(actualHvacDelta.toFixed(1))} × ${s('0.5')}) = ${w(exchangeKw.toFixed(2) + ' kW')}</div>
 
