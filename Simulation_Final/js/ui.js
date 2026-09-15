@@ -404,9 +404,9 @@ class UIController {
         // =====================================================================
         
         // Indoor Average & Deviation — only write if backend hasn't taken over
+        const finalDeviation = indoorTemp - targetTemp;
         if (!this._backendOverride) {
             this.indoorAvg.innerHTML = indoorTemp.toFixed(1) + '<span class="unit">&deg;C</span>';
-            const finalDeviation = indoorTemp - targetTemp;
             const sign = finalDeviation > 0 ? '+' : (finalDeviation < 0 ? '-' : '');
             this.deviationVal.textContent = sign + Math.abs(finalDeviation).toFixed(1);
         }
