@@ -113,6 +113,20 @@ class UIController {
         this.carbonStatus = document.getElementById('carbon-status');
         this.algoTrace = document.getElementById('algo-trace');
 
+        // Formulas Panel
+        this.formulasPanel = document.getElementById('formulas-panel');
+        this.formulasContent = document.getElementById('formulas-content');
+        this.formulasPanelOpen = false;
+        
+        const toggleBtn = document.getElementById('formulas-toggle-btn');
+        const closeBtn = document.getElementById('formulas-close-btn');
+        if (toggleBtn) {
+            toggleBtn.addEventListener('click', () => this.toggleFormulasPanel());
+        }
+        if (closeBtn) {
+            closeBtn.addEventListener('click', () => this.toggleFormulasPanel());
+        }
+
         // Init initial button state
         this.playPauseBtn.textContent = this.settings.animateTime ? '⏸' : '▶';
 
@@ -120,6 +134,13 @@ class UIController {
         this.settings.occupancy = 0;
         this.weatherData = { tempC: null, condition: 'Loading...', cloudCover: 0 };
         this.fetchWeather();
+    }
+
+    toggleFormulasPanel() {
+        this.formulasPanelOpen = !this.formulasPanelOpen;
+        if (this.formulasPanel) {
+            this.formulasPanel.style.display = this.formulasPanelOpen ? 'block' : 'none';
+        }
     }
 
     async fetchWeather() {
@@ -484,6 +505,93 @@ class UIController {
                 `;
             }
             this.algoTrace.innerHTML = traceHtml;
+        }
+
+
+        // --- LIVE FORMULAS PANEL ---
+        if (this.formulasPanelOpen && this.formulasContent) {
+            const s = (v) => `<span style="color:#38bdf8;font-weight:bold">${v}</span>`;
+            const w = (v) => `<span style="color:#f97316;font-weight:bold">${v}</span>`;
+            const g = (v) => `<span style="color:#22c55e;font-weight:bold">${v}</span>`;
+            const r = (v) => `<span style="color:#f87171;font-weight:bold">${v}</span>`;
+            const dim = (v) => `<span style="color:#64748b">${v}</span>`;
+            
+            const section = (title) => `<div style="color:#0ea5e9;font-weight:bold;margin:16px 0 6px;border-bottom:1px solid #1e293b;padding-bottom:4px;font-size:1.1em;">▸ ${title}</div>`;
+            
+            const apiTemp = (this.weatherData && this.weatherData.tempC != null) ? this.weatherData.tempC.toFixed(1) : 'N/A';
+            const seasonMod = day >= 150 && day <= 240 ? '+4.5' : (day < 60 || day > 300 ? '-11.0' : '-3.0');
+            
+            this.formulasContent.innerHTML = `
+                ${section('1. BASE TEMPERATURE')}
+                <div>T_base = T_api + SeasonModifier</div>
+                <div>T_base = ${s(apiTemp + '°C')} + ${s(seasonMod + '°C')} = ${w(baseTemp.toFixed(1) + '°C')}</div>
+                
+                ${section('2. SOLAR LOAD (Q_solar)')}
+                <div>sunIntensity = getSunIntensity(${s(time.toFixed(1) + 'h')}, ${s(cloudCover + '%')})</div>
+                <div>sunIntensity = ${w(sunIntensity.toFixed(3))}</div>
+                <div style="margin-top:4px">Q_solar = intensity × WindowArea × SHGC × Irradiance</div>
+                <div>Q_solar = ${s(sunIntensity.toFixed(3))} × ${s('8.0m²')} × ${s('0.4')} × ${s('1000W/m²')} / 1000</div>
+                <div>Q_solar = ${w(qSolarKw.toFixed(3) + ' kW')}</div>
+
+                ${section('3. OCCUPANCY LOAD (Q_occ)')}
+                <div>${dim('ASHRAE 55: Seated person ≈ 120W metabolic heat')}</div>
+                <div>Q_occ = Occupants × 0.12 kW/person</div>
+                <div>Q_occ = ${s(this.settings.occupancy)} × 0.12 = ${w(qOccupancyKw.toFixed(3) + ' kW')}</div>
+
+                ${section('4. ENVELOPE LOAD (Q_env)')}
+                <div>Q_env = U × A × max(0, T_out - T_target) / 1000</div>
+                <div>Q_env = ${s('0.35')} × ${s('45m²')} × max(0, ${s(outdoorTemp.toFixed(1))} - ${s(targetTemp.toFixed(1))}) / 1000</div>
+                <div>Q_env = ${w(qEnvelopeKw.toFixed(3) + ' kW')}</div>
+
+                ${section('5. THERMAL DECAY (Q_decay)')}
+                <div>Q_decay = Q_solar × 0.08 ${dim('(8% re-radiation)')}</div>
+                <div>Q_decay = ${s(qSolarKw.toFixed(3))} × 0.08 = ${w(qDecayKw.toFixed(3) + ' kW')}</div>
+
+                ${section('6. TOTAL HEAT LOAD')}
+                <div>Q_total = Q_solar + Q_occ + Q_env + Q_decay</div>
+                <div>Q_total = ${s(qSolarKw.toFixed(2))} + ${s(qOccupancyKw.toFixed(2))} + ${s(qEnvelopeKw.toFixed(2))} + ${s(qDecayKw.toFixed(2))}</div>
+                <div>Q_total = ${r(totalHeatLoadKw.toFixed(3) + ' kW')}</div>
+                <div style="margin-top:4px">ΔT_gain = Q_total / BuildingHeatLoss</div>
+                <div>ΔT_gain = ${s(totalHeatLoadKw.toFixed(2))} / ${s('0.5 kW/°C')} = ${w(totalGainDegC.toFixed(1) + '°C')}</div>
+
+                ${section('7. RAW INDOOR TEMP (before HVAC)')}
+                <div>T_raw = T_base + ΔT_gain</div>
+                <div>T_raw = ${s(baseTemp.toFixed(1))} + ${s(totalGainDegC.toFixed(1))} = ${r(rawIndoorTemp.toFixed(1) + '°C')}</div>
+
+                ${section('8. CONTROLLER: ' + controllerLabel.toUpperCase())}
+                ${this.activeMode === 'predictive' && this.hvacController.lastError !== undefined ? `
+                    <div>error = T_raw - T_target = ${s(rawIndoorTemp.toFixed(1))} - ${s(targetTemp.toFixed(1))} = ${w(this.hvacController.lastError.toFixed(2) + '°C')}</div>
+                    <div style="margin-top:4px">P = Kp × error = ${s('1.5')} × ${s(this.hvacController.lastError.toFixed(2))} = ${w(this.hvacController.lastP.toFixed(2))}</div>
+                    <div>I = Ki × Σ(e·dt) = ${s('0.1')} × ${s(this.hvacController.integral.toFixed(2))} = ${w(this.hvacController.lastI.toFixed(2))}</div>
+                    <div>D = Kd × Δe/dt = ${w(this.hvacController.lastD.toFixed(2))}</div>
+                    <div>FF = Kff × Q_pred = ${s('0.2')} × ${s(totalHeatLoadKw.toFixed(2))} = ${w(this.hvacController.lastFF.toFixed(2))}</div>
+                    <div style="margin-top:4px">Output = clamp(P+I+D+FF, 0, 100)</div>
+                    <div>Output = clamp(${s((this.hvacController.lastP + this.hvacController.lastI + this.hvacController.lastD + this.hvacController.lastFF).toFixed(1))}) = ${g(powerPct.toFixed(0) + '%')}</div>
+                ` : `
+                    <div>if T_current > target + 0.5: power = 100%</div>
+                    <div>if T_current ≤ target - 0.5: power = 0%</div>
+                    <div style="margin-top:4px">${s(rawIndoorTemp.toFixed(1) + '°C')} ${rawIndoorTemp > targetTemp + 0.5 ? '>' : '≤'} ${s((targetTemp + 0.5).toFixed(1) + '°C')} → Output = ${g(powerPct.toFixed(0) + '%')}</div>
+                `}
+
+                ${section('9. HVAC EFFECT')}
+                <div>maxPull = 10.0 × (power/100) = 10.0 × ${s((powerPct/100).toFixed(2))} = ${w(maxHvacPull.toFixed(1) + '°C')}</div>
+                <div>ΔT_hvac = min(|deviation|, maxPull) × sign</div>
+                <div>ΔT_hvac = min(${s(Math.abs(rawDeviation).toFixed(1))}, ${s(maxHvacPull.toFixed(1))}) = ${w(actualHvacDelta.toFixed(1) + '°C')}</div>
+                <div style="margin-top:4px">exchangeKw = -(ΔT × capacity/maxDelta)</div>
+                <div>exchangeKw = -(${s(actualHvacDelta.toFixed(1))} × ${s('0.5')}) = ${w(exchangeKw.toFixed(2) + ' kW')}</div>
+
+                ${section('10. FINAL RESULT')}
+                <div>T_indoor = T_raw - ΔT_hvac</div>
+                <div>T_indoor = ${s(rawIndoorTemp.toFixed(1))} - ${s(actualHvacDelta.toFixed(1))} = ${g(indoorTemp.toFixed(1) + '°C')}</div>
+                <div style="margin-top:4px">Deviation from target: ${finalDeviation > 0.5 ? r(('+' + finalDeviation.toFixed(1)) + '°C') : g(finalDeviation.toFixed(1) + '°C')}</div>
+
+                ${section('11. Q-VECTORS (proportional)')}
+                <div>Solar:    ${s(qSolarKw.toFixed(2))} / ${s(totalHeatLoadKw.toFixed(2))} × 100 = ${w(Math.round(solarPct) + '%')}</div>
+                <div>Occupancy:${s(qOccupancyKw.toFixed(2))} / ${s(totalHeatLoadKw.toFixed(2))} × 100 = ${w(Math.round(occPct) + '%')}</div>
+                <div>Envelope: ${s(qEnvelopeKw.toFixed(2))} / ${s(totalHeatLoadKw.toFixed(2))} × 100 = ${w(Math.round(envPct) + '%')}</div>
+                <div>Decay:    ${s(qDecayKw.toFixed(2))} / ${s(totalHeatLoadKw.toFixed(2))} × 100 = ${w(Math.round(decayPct) + '%')}</div>
+                <div style="margin-top:4px;color:#64748b">Sum = ${Math.round(solarPct + occPct + envPct + decayPct)}%</div>
+            `;
         }
 
         // --- NEXT THERMAL EVENT ---
