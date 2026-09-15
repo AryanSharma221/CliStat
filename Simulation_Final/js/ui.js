@@ -435,7 +435,7 @@ class UIController {
             // HVAC Power
             this.hvacPower.innerHTML = Math.round(powerPct) + '<span class="unit">%</span>';
         }
-        this._backendOverride = false; // reset flag for next frame
+        // DON'T reset _backendOverride — once the backend takes over, it owns these elements permanently
 
         // --- CARBON FOOTPRINT (dynamic) ---
         if (this.carbonRate) {
