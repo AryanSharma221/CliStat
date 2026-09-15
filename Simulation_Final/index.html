@@ -7,8 +7,8 @@
     <link rel="stylesheet" href="style.css">
     
     <!-- Three.js and Controls -->
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js?v=1789507418713"></script>
-    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js?v=1789507418713"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js?v=1789507630800"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js?v=1789507630800"></script>
 </head>
 <body>
     <div id="error-log" style="position:fixed; top:0; left:0; z-index:9999; background:red; color:white; font-family:monospace; padding:10px; display:none;"></div>
@@ -193,9 +193,16 @@
                         <h2 id="indoor-avg">22.0<span class="unit">&deg;C</span></h2>
                     </div>
                     <span class="subtext">
-                        target <span id="target-temp-val">22.0</span>&deg; • 
-                        <span id="deviation-val">+0.0</span>&deg; deviation
+                        <span id="deviation-val">+0.0</span>&deg; deviation from target
                     </span>
+                </div>
+
+                <div class="telemetry-card" style="border: 1px solid #0ea5e9; background: rgba(14,165,233,0.05);">
+                    <label style="color:#0ea5e9">TARGET TEMPERATURE</label>
+                    <div class="value-row" style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
+                        <span id="target-temp-val" style="display:none;">22.0</span>
+                        <input type="number" id="target-temp-input" min="15" max="30" step="0.5" value="22.0" style="width: 80px; background: rgba(14,165,233,0.15); border: 1px solid #0ea5e9; color: white; border-radius: 6px; padding: 6px; font-size: 20px; font-weight: bold; text-align: center; font-family: inherit; margin: 0 auto;">
+                    </div>
                     <input type="range" id="target-temp-slider" min="15" max="30" step="0.5" value="22.0" class="slider" style="margin-top:12px; width: 100%;">
                 </div>
 
@@ -271,28 +278,28 @@
     </div>
 
     <!-- Physics & Data Layer (Member 1) -->
-    <script src="js/vec3.js?v=1789507418713"></script>
-    <script src="js/config.js?v=1789507418713"></script>
-    <script src="js/sun.js?v=1789507418713"></script>
-    <script src="js/collision.js?v=1789507418713"></script>
-    <script src="js/physics.js?v=1789507418713"></script>
-    <script src="js/predictor.js?v=1789507418713"></script>
+    <script src="js/vec3.js?v=1789507630800"></script>
+    <script src="js/config.js?v=1789507630800"></script>
+    <script src="js/sun.js?v=1789507630800"></script>
+    <script src="js/collision.js?v=1789507630800"></script>
+    <script src="js/physics.js?v=1789507630800"></script>
+    <script src="js/predictor.js?v=1789507630800"></script>
 
     <!-- AI & Control Layer (Member 2 - Aryan) -->
-    <script src="js/controller.js?v=1789507418713"></script>
-    <script src="js/bangbang.js?v=1789507418713"></script>
-    <script src="js/blinds.js?v=1789507418713"></script>
-    <script src="js/sensors.js?v=1789507418713"></script>
-    <script src="js/kalman.js?v=1789507418713"></script>
-    <script src="js/anomaly.js?v=1789507418713"></script>
-    <script src="js/occupancy.js?v=1789507418713"></script>
+    <script src="js/controller.js?v=1789507630800"></script>
+    <script src="js/bangbang.js?v=1789507630800"></script>
+    <script src="js/blinds.js?v=1789507630800"></script>
+    <script src="js/sensors.js?v=1789507630800"></script>
+    <script src="js/kalman.js?v=1789507630800"></script>
+    <script src="js/anomaly.js?v=1789507630800"></script>
+    <script src="js/occupancy.js?v=1789507630800"></script>
 
     <!-- 3D Visualization & UI (Member 3) -->
-    <script src="js/modelData.js?v=1789507418713"></script>
-    <script src="js/builder.js?v=1789507418713"></script>
-    <script src="js/simulation.js?v=1789507418713"></script>
-    <script src="js/viewer.js?v=1789507418713"></script>
-    <script src="js/ui.js?v=1789507418713"></script>
-    <script src="js/app.js?v=1789507418713"></script>
+    <script src="js/modelData.js?v=1789507630800"></script>
+    <script src="js/builder.js?v=1789507630800"></script>
+    <script src="js/simulation.js?v=1789507630800"></script>
+    <script src="js/viewer.js?v=1789507630800"></script>
+    <script src="js/ui.js?v=1789507630800"></script>
+    <script src="js/app.js?v=1789507630800"></script>
 </body>
 </html>
