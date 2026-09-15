@@ -105,9 +105,8 @@ class HouseBuilder {
         
         // Let it cast shadows if we want the glass to slightly tint the light, 
         // but transparent materials in Three.js standard shadowmap act solid unless handled specially.
-        // For visual clarity, we disable castShadow on the glass ceiling so the sun enters the room fully
-        // if the user expects it to be like an open roof or fully transparent to physics.
-        ceiling.castShadow = false; 
+        // Enable castShadow so the ceiling blocks sunlight, meaning light only enters via windows
+        ceiling.castShadow = true;
         
         this.addEdges(ceiling, 0x38bdf8);
         group.add(ceiling);
