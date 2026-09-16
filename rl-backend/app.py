@@ -237,11 +237,12 @@ def predict_hvac_power(request: PredictionRequest):
                 # Add 350W of power demand per degree of deviation for a smoother response
                 predicted_w += (temp_diff * 350.0)
                 
-            # Ensure we don't exceed max capacity
-            predicted_w = min(predicted_w, request.max_hvac_capacity_w)
+            # Ensure we don't exceed max capacity FOR THIS ROOM
+            room_max_capacity = request.max_hvac_capacity_w / max(len(request.rooms), 1)
+            predicted_w = min(predicted_w, room_max_capacity)
             # ---------------------------------------------------------------------
 
-            load_pct = (predicted_w / request.max_hvac_capacity_w) * 100.0
+            load_pct = (predicted_w / room_max_capacity) * 100.0
 
             per_room_results[room.room_id] = {
                 "predicted_power_w": round(predicted_w, 2),
@@ -253,15 +254,15 @@ def predict_hvac_power(request: PredictionRequest):
             }
             total_power_w += predicted_w
 
-        avg_power_w = total_power_w / max(len(request.rooms), 1)
-        avg_load_pct = (avg_power_w / request.max_hvac_capacity_w) * 100.0
+        # The overall load percentage of the ENTIRE house
+        total_load_pct = (total_power_w / request.max_hvac_capacity_w) * 100.0
 
         return {
             "per_room": per_room_results,
             "total_power_w": round(total_power_w, 2),
             "total_power_kw": round(total_power_w / 1000.0, 2),
-            "avg_power_w": round(avg_power_w, 2),
-            "avg_load_percentage": round(avg_load_pct, 1),
+            "avg_power_w": round(total_power_w / max(len(request.rooms), 1), 2),
+            "avg_load_percentage": round(total_load_pct, 1),
             "max_capacity_w": request.max_hvac_capacity_w,
             "live_data": {
                 "occupancy_from_hotspot": live_occupancy,
