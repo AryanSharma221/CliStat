@@ -132,16 +132,9 @@ const ML_BRIDGE = {
         if (window.SimulationAPI && window.SimulationAPI.overrideHVAC) {
             const avgPower = pred.avg_load_percentage || 0;
             
-            // Determine if we are heating or cooling
-            let sign = -1; // Default cooling
-            if (window.SimulationAPI.getState) {
-                const state = window.SimulationAPI.getState();
-                if (state && state.targetTempCelsius > state.indoorAvgCelsius) {
-                    sign = 1; // Heating
-                }
-            }
-            
-            const exchangeKw = sign * (avgPower / 100) * 5.0;
+            // The RL model correctly outputs negative load for heating and positive load for cooling.
+            // The physics engine expects -ve exchangeKw for cooling, +ve for heating.
+            const exchangeKw = -1 * (avgPower / 100) * 5.0;
             const modeLabel = 'XGBoost ML Model (Live)';
             window.SimulationAPI.overrideHVAC(avgPower, exchangeKw, modeLabel);
         }

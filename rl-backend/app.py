@@ -190,8 +190,8 @@ def predict_hvac_power(request: PredictionRequest):
             wind_speed = request.wind_speed
             solar_rad = request.solar_radiation
 
-        # Use outdoor temp as room temperature proxy
-        room_temp = outside_temp
+        # Use the actual room temperature from the simulation state
+        room_temp = request.room_temperature
 
         dt = datetime.fromisoformat(request.timestamp)
         hour = dt.hour + dt.minute / 60.0
@@ -229,19 +229,15 @@ def predict_hvac_power(request: PredictionRequest):
             features['dir_West'] = 1 if room.room_direction.lower() == 'west' else 0
 
             df = pd.DataFrame([features])[feature_names]
-            predicted_w = max(0.0, float(model.predict(df)[0]))
             
-            # --- strictly fix how the hvac values that come out of the model ---
-            temp_diff = abs(request.required_temperature - request.room_temperature)
-            if temp_diff > 0.5:
-                # Add 350W of power demand per degree of deviation for a smoother response
-                predicted_w += (temp_diff * 350.0)
-                
-            # Ensure we don't exceed max capacity FOR THIS ROOM
+            # The XGBoost model natively outputs negative power for heating and positive for cooling
+            predicted_w = float(model.predict(df)[0])
+            
+            # Ensure we don't exceed max capacity FOR THIS ROOM (in both positive cooling and negative heating directions)
             room_max_capacity = request.max_hvac_capacity_w / max(len(request.rooms), 1)
-            predicted_w = min(predicted_w, room_max_capacity)
-            # ---------------------------------------------------------------------
+            predicted_w = max(-room_max_capacity, min(predicted_w, room_max_capacity))
 
+            # The load percentage can be negative (heating) or positive (cooling)
             load_pct = (predicted_w / room_max_capacity) * 100.0
 
             per_room_results[room.room_id] = {
