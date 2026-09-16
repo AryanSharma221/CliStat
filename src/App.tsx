@@ -513,18 +513,26 @@ export default function App() {
               </p>
               <div style={{ display: "flex", gap: 10 }}>
                 <button onClick={() => {
-                  document.getElementById('iframe-physics').style.display = 'block';
-                  document.getElementById('iframe-rl').style.display = 'none';
-                  document.getElementById('btn-physics').style.border = '1px solid var(--ls-text)';
-                  document.getElementById('btn-rl').style.border = '1px solid var(--ls-border)';
+                  const p = document.getElementById('iframe-physics');
+                  if(p) { p.style.visibility = 'visible'; p.style.position = 'relative'; }
+                  const r = document.getElementById('iframe-rl');
+                  if(r) { r.style.visibility = 'hidden'; r.style.position = 'absolute'; }
+                  const bp = document.getElementById('btn-physics');
+                  if(bp) bp.style.border = '1px solid var(--ls-text)';
+                  const br = document.getElementById('btn-rl');
+                  if(br) br.style.border = '1px solid var(--ls-border)';
                 }} id="btn-physics" style={{ background: "transparent", color: "var(--ls-text)", fontSize: 13, padding: "8px 16px", border: "1px solid var(--ls-text)", borderRadius: 6, cursor: "pointer" }}>
                   Physics Engine (Vision-Predictive)
                 </button>
                 <button onClick={() => {
-                  document.getElementById('iframe-physics').style.display = 'none';
-                  document.getElementById('iframe-rl').style.display = 'block';
-                  document.getElementById('btn-physics').style.border = '1px solid var(--ls-border)';
-                  document.getElementById('btn-rl').style.border = '1px solid var(--ls-text)';
+                  const p = document.getElementById('iframe-physics');
+                  if(p) { p.style.visibility = 'hidden'; p.style.position = 'absolute'; }
+                  const r = document.getElementById('iframe-rl');
+                  if(r) { r.style.visibility = 'visible'; r.style.position = 'relative'; }
+                  const bp = document.getElementById('btn-physics');
+                  if(bp) bp.style.border = '1px solid var(--ls-border)';
+                  const br = document.getElementById('btn-rl');
+                  if(br) br.style.border = '1px solid var(--ls-text)';
                 }} id="btn-rl" style={{ background: "transparent", color: "var(--ls-text)", fontSize: 13, padding: "8px 16px", border: "1px solid var(--ls-border)", borderRadius: 6, cursor: "pointer" }}>
                   RL Agent (XGBoost)
                 </button>
@@ -536,13 +544,13 @@ export default function App() {
             <iframe 
               id="iframe-physics"
               src="/Simulation_Final/index.html" 
-              style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
+              style={{ width: '100%', height: '100%', border: 'none', visibility: 'visible', position: 'relative' }}
               title="Predictive Thermostat Simulation"
             />
             <iframe 
               id="iframe-rl"
               src="/rl-simulation/index.html" 
-              style={{ width: '100%', height: '100%', border: 'none', display: 'none' }}
+              style={{ width: '100%', height: '100%', border: 'none', visibility: 'hidden', position: 'absolute' }}
               title="RL Thermostat Simulation"
             />
           </div>

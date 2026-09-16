@@ -27,11 +27,10 @@ class ModelPredictiveController {
         this.steps = stepsPerHorizon;
     }
 
-    compute(currentTemp, targetTemp, currentHour, rooms, objects, windows, weather, dt) {
-        const audience = typeof getActiveAudience === 'function' ? getActiveAudience() : { energyPenaltyWeight: 0.1 };
-        const lambda = audience.energyPenaltyWeight || 0.1; 
+    compute(currentTemp, targetTemp, qPredicted, dt) {
+        const lambda = 0.1;
+        const stepSeconds = dt;
         
-        const stepSize = this.horizon / this.steps; 
         let bestSchedule = [];
         let bestCost = Infinity;
 
@@ -42,31 +41,8 @@ class ModelPredictiveController {
             let cost = 0;
 
             for (let step = 0; step < this.steps; step++) {
-                const futureHour = currentHour + (step * stepSize) / 60;
-                
-                let futureIntensity = 0;
-                let futureHits = [];
-                if (typeof getSunAngle === 'function') {
-                    const futureAngles = getSunAngle(futureHour, window.dayOfYear || 180, window.latitude || 34);
-                    futureIntensity = getSunIntensity(futureHour, weather.cloud);
-                    const futureRays = generateSunRays(futureAngles, windows);
-                    futureHits = detectAllIntersections(futureRays, objects);
-                }
-
-                let futureQ = 0;
-                for (const hit of futureHits) {
-                    if (hit.isIntersecting) {
-                        futureQ += futureIntensity * hit.intersectArea * hit.thermalMass;
-                    }
-                }
-
                 const hvacPower = schedule[step];
-                if (typeof updateRoomTemperature === 'function') {
-                    simTemp = updateRoomTemperature(simTemp, futureQ, hvacPower, stepSize * 60);
-                } else {
-                    simTemp += futureQ * 0.1 - (hvacPower / 100) * 0.5;
-                }
-
+                simTemp += (qPredicted / 10000) * stepSeconds - (hvacPower / 100) * 0.5;
                 cost += Math.pow(simTemp - targetTemp, 2) + lambda * Math.pow(hvacPower, 2);
             }
 

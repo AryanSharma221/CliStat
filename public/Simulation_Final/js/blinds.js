@@ -17,7 +17,7 @@ class SmartBlindController {
                     commands.push({ windowId: window.id, action: 'closed', reason: 'Aggressive: Imminent thermal threat' });
                 } else if (roomThreats.some(t => t.estimatedHeatSpike > 0.1 && t.minutesUntil < 45)) {
                     commands.push({ windowId: window.id, action: 'half', reason: 'Aggressive: Moderate threat approaching' });
-                } else if (room.tempF < room.targetTempF && !roomThreats.length) {
+                } else if (room.tempC < room.targetTempC && !roomThreats.length) {
                     commands.push({ windowId: window.id, action: 'open', reason: 'Passive solar heating beneficial' });
                 } else {
                     commands.push({ windowId: window.id, action: window.blindState, reason: 'No change needed' });
@@ -36,7 +36,7 @@ class SmartBlindController {
                     commands.push({ windowId: window.id, action: 'closed', reason: 'Imminent high-thermal threat' });
                 } else if (roomThreats.some(t => t.estimatedHeatSpike > 0.2 && t.minutesUntil < 30)) {
                     commands.push({ windowId: window.id, action: 'half', reason: 'Moderate threat approaching' });
-                } else if (room.tempF < room.targetTempF && !roomThreats.length) {
+                } else if (room.tempC < room.targetTempC && !roomThreats.length) {
                     commands.push({ windowId: window.id, action: 'open', reason: 'Passive solar heating beneficial' });
                 } else {
                     commands.push({ windowId: window.id, action: window.blindState, reason: 'No change needed' });

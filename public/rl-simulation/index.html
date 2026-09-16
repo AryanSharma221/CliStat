@@ -209,14 +209,24 @@
                 </div>
 
                 <div class="telemetry-card">
-                    <label>INDOOR AVERAGE</label>
+                    <label>INDOOR TEMPERATURE</label>
                     <div class="value-row">
                         <h2 id="indoor-avg">22.0<span class="unit">&deg;C</span></h2>
                     </div>
                     <span class="subtext">
-                        target <span id="target-temp-val">22.0</span>&deg; • 
-                        <span id="deviation-val">+0.0</span>&deg; deviation
+                        <span id="deviation-val">+0.0</span>&deg; deviation from target
                     </span>
+                    <input type="range" id="indoor-temp-slider" min="15" max="40" step="0.5" value="22.0" class="slider" style="margin-top:12px; width: 100%;">
+                </div>
+
+                <div class="telemetry-card">
+                    <label>TARGET TEMPERATURE</label>
+                    <div class="value-row">
+                        <h2 id="target-temp-val-display" class="text-accent">22.0<span class="unit">&deg;C</span></h2>
+                        <!-- Hidden original target-temp-val to prevent JS errors if anything else relies on it -->
+                        <span id="target-temp-val" style="display:none;">22.0</span>
+                    </div>
+                    <span class="subtext">setpoint</span>
                     <input type="range" id="target-temp-slider" min="15" max="30" step="0.5" value="22.0" class="slider" style="margin-top:12px; width: 100%;">
                 </div>
 

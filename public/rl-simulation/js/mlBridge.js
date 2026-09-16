@@ -7,7 +7,7 @@
 // Pushes ML-predicted HVAC power into the simulation via window.SimulationAPI.
 
 const ML_BRIDGE = {
-    API_BASE: 'http://localhost:8000',
+    API_BASE: window.location.hostname === 'localhost' ? 'http://localhost:8000' : '',
     POLL_INTERVAL: 5000,
     lastPrediction: null,
     lastWeather: null,

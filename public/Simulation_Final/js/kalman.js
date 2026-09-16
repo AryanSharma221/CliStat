@@ -1,5 +1,5 @@
 class KalmanFilter {
-    constructor(q = 0.02, r = 0.5, p = 1.0, initialValue = 72.0) {
+    constructor(q = 0.02, r = 0.5, p = 1.0, initialValue = 22.0) {
         this.q = q; 
         this.r = r; 
         this.x = initialValue; 
@@ -20,7 +20,7 @@ class MultiSensorFusion {
     constructor(sensors) {
         this.filters = {};
         for (const sensor of sensors) {
-            this.filters[sensor.id] = new KalmanFilter(0.02, 0.5 + Math.random()*0.2, 1.0, 72.0);
+            this.filters[sensor.id] = new KalmanFilter(0.02, 0.5 + Math.random()*0.2, 1.0, 22.0);
         }
     }
 

@@ -48,6 +48,9 @@ class UIController {
             setTargetTemp: (temp) => {
                 this.targetTempSlider.value = temp;
                 this.targetTempVal.textContent = parseFloat(temp).toFixed(1);
+                if (this.targetTempValDisplay) {
+                    this.targetTempValDisplay.innerHTML = parseFloat(temp).toFixed(1) + '<span class="unit">&deg;C</span>';
+                }
                 this.updateStats();
             },
             setTime: (time) => {
@@ -95,6 +98,8 @@ class UIController {
         // Telemetry Elements
         this.targetTempSlider = document.getElementById('target-temp-slider');
         this.targetTempVal = document.getElementById('target-temp-val');
+        this.targetTempValDisplay = document.getElementById('target-temp-val-display'); // The new H2 display
+        this.indoorTempSlider = document.getElementById('indoor-temp-slider');
         this.indoorAvg = document.getElementById('indoor-avg');
         this.deviationVal = document.getElementById('deviation-val');
         this.heatLoad = document.getElementById('heat-load');
@@ -151,7 +156,8 @@ class UIController {
     async fetchWeather() {
         try {
             // Fetch from our own FastAPI backend which caches the OWM response
-            const res = await fetch('http://localhost:8000/api/weather');
+            const apiBase = (typeof ML_BRIDGE !== 'undefined') ? ML_BRIDGE.API_BASE : (window.location.hostname === 'localhost' ? 'http://localhost:8000' : '');
+            const res = await fetch(`${apiBase}/api/weather`);
             if (!res.ok) throw new Error('API returned ' + res.status);
             const data = await res.json();
             
@@ -194,9 +200,20 @@ class UIController {
     addEventListeners() {
         // Target Temp Slider
         this.targetTempSlider.addEventListener('input', (e) => {
-            this.targetTempVal.textContent = parseFloat(e.target.value).toFixed(1);
+            const val = parseFloat(e.target.value).toFixed(1);
+            this.targetTempVal.textContent = val;
+            if (this.targetTempValDisplay) {
+                this.targetTempValDisplay.innerHTML = val + '<span class="unit">&deg;C</span>';
+            }
             this.updateStats();
         });
+
+        // Indoor Temp Slider
+        if (this.indoorTempSlider) {
+            this.indoorTempSlider.addEventListener('input', (e) => {
+                this.updateStats();
+            });
+        }
 
         // Mode Toggles
         this.modePredictive.addEventListener('click', () => {
@@ -292,10 +309,18 @@ class UIController {
 
         // --- TOTAL PREDICTED HEAT LOAD ---
         const totalHeatLoadKw = qSolarKw + qOccupancyKw + qEnvelopeKw + qDecayKw;
-        
+        // --- 5. INDOOR TEMPERATURE CALCULATION ---
         const buildingHeatLossCoeff = 0.5;
         const totalGainDegC = totalHeatLoadKw / buildingHeatLossCoeff;
-        const rawIndoorTemp = baseTemp + totalGainDegC;
+        
+        let rawIndoorTemp;
+        if (this.indoorTempSlider) {
+            // Read from manual slider override
+            rawIndoorTemp = parseFloat(this.indoorTempSlider.value);
+        } else {
+            // Physics simulation fallback
+            rawIndoorTemp = baseTemp + totalGainDegC;
+        }
 
         // =====================================================================
         //  HVAC CONTROLLER — ML Model or BangBang depending on mode

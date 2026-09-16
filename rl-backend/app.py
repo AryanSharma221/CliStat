@@ -9,29 +9,32 @@ from datetime import datetime
 import subprocess
 import requests
 import re
+import os
+from pathlib import Path
 
 app = FastAPI(title="HVAC Power Prediction API")
 
 # Enable CORS so the browser simulation can call this API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=os.getenv("ALLOWED_ORIGINS", "*").split(","),
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Load model and features on startup
 try:
-    model = joblib.load('model/xgboost_hvac.joblib')
-    feature_names = joblib.load('model/feature_names.joblib')
+    MODEL_DIR = Path(__file__).resolve().parent / "model"
+    model = joblib.load(MODEL_DIR / "xgboost_hvac.joblib")
+    feature_names = joblib.load(MODEL_DIR / "feature_names.joblib")
 except Exception as e:
     print(f"Error loading model. Did you run train.py first? {e}")
     model = None
     feature_names = None
 
 # OpenWeatherMap API Key
-WEATHER_API_KEY = "f2a535c74ca8328f5e3abe55e599712b"
+WEATHER_API_KEY = os.getenv("WEATHER_API_KEY", "f2a535c74ca8328f5e3abe55e599712b")
 
 # ─── Hotspot Occupancy ────────────────────────────────────────────────────────
 
@@ -40,6 +43,9 @@ def get_hotspot_device_count():
     Counts devices connected to the Windows Mobile Hotspot
     by identifying the Wi-Fi Direct Virtual Adapter IP and parsing its ARP block.
     """
+    import platform
+    if platform.system() != "Windows":
+        return 0
     try:
         ipconfig_out = subprocess.check_output("ipconfig /all", shell=True).decode('utf-8', errors='ignore')
         hotspot_ip = None
@@ -86,7 +92,7 @@ def get_live_weather(city="Chennai"):
     if _weather_cache["data"] and (now - _weather_cache["timestamp"]) < 60:
         return _weather_cache["data"]
 
-    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
+    url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
     try:
         response = requests.get(url, timeout=5)
         response.raise_for_status()
