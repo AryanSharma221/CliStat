@@ -298,28 +298,30 @@ class UIController {
         this.settings.occupancy = occupancy;
         const qOccupancyKw = occupancy * 0.12;
 
-        // --- 4. ENVELOPE LOAD ---
-        const outdoorTemp = baseTemp;
-        const U_envelope = 0.35;
-        const A_envelope = 45;
-        const deltaT_envelope = Math.max(0, outdoorTemp - targetTemp);
-        const qEnvelopeKw = (U_envelope * A_envelope * deltaT_envelope) / 1000;
+        // --- INITIALIZE INDOOR TEMP FOR PHYSICS ---
+        let rawIndoorTemp;
+        if (this.indoorTempSlider) {
+            rawIndoorTemp = parseFloat(this.indoorTempSlider.value);
+        } else {
+            rawIndoorTemp = baseTemp; // Initial guess for physics iteration
+        }
 
-        // --- 5. THERMAL DECAY ---
-        const qDecayKw = qSolarKw * 0.08;
+        // --- 4. ENVELOPE HEAT TRANSFER ---
+        const envelopeUValue = 0.8;
+        const wallArea = 150.0; // Assume 150m2 of exposed wall/roof
+        // Realistic envelope heat transfer in kW: (U * A * dT) / 1000
+        const qEnvelopeKw = ((baseTemp - rawIndoorTemp) * envelopeUValue * wallArea) / 1000.0;
+
+        // --- THERMAL DECAY ---
+        const qDecayKw = (baseTemp - rawIndoorTemp) * 0.05;
 
         // --- TOTAL PREDICTED HEAT LOAD ---
         const totalHeatLoadKw = qSolarKw + qOccupancyKw + qEnvelopeKw + qDecayKw;
-        // --- 5. INDOOR TEMPERATURE CALCULATION ---
-        const buildingHeatLossCoeff = 0.5;
-        const totalGainDegC = totalHeatLoadKw / buildingHeatLossCoeff;
-        
-        let rawIndoorTemp;
-        if (this.indoorTempSlider) {
-            // Read from manual slider override
-            rawIndoorTemp = parseFloat(this.indoorTempSlider.value);
-        } else {
-            // Physics simulation fallback
+
+        // --- 5. INDOOR TEMPERATURE CALCULATION (Fallback) ---
+        if (!this.indoorTempSlider) {
+            const buildingHeatLossCoeff = 0.5;
+            const totalGainDegC = totalHeatLoadKw / buildingHeatLossCoeff;
             rawIndoorTemp = baseTemp + totalGainDegC;
         }
 

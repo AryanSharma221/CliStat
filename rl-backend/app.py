@@ -234,8 +234,8 @@ def predict_hvac_power(request: PredictionRequest):
             # --- strictly fix how the hvac values that come out of the model ---
             temp_diff = abs(request.required_temperature - request.room_temperature)
             if temp_diff > 0.5:
-                # Add 500W of power demand per degree of deviation
-                predicted_w += (temp_diff * 500.0)
+                # Add 350W of power demand per degree of deviation for a smoother response
+                predicted_w += (temp_diff * 350.0)
                 
             # Ensure we don't exceed max capacity
             predicted_w = min(predicted_w, request.max_hvac_capacity_w)
