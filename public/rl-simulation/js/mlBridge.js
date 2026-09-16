@@ -131,7 +131,17 @@ const ML_BRIDGE = {
         // Override HVAC display via SimulationAPI
         if (window.SimulationAPI && window.SimulationAPI.overrideHVAC) {
             const avgPower = pred.avg_load_percentage || 0;
-            const exchangeKw = -1 * (avgPower / 100) * 5.0;
+            
+            // Determine if we are heating or cooling
+            let sign = -1; // Default cooling
+            if (window.SimulationAPI.getState) {
+                const state = window.SimulationAPI.getState();
+                if (state && state.targetTempCelsius > state.indoorAvgCelsius) {
+                    sign = 1; // Heating
+                }
+            }
+            
+            const exchangeKw = sign * (avgPower / 100) * 5.0;
             const modeLabel = 'XGBoost ML Model (Live)';
             window.SimulationAPI.overrideHVAC(avgPower, exchangeKw, modeLabel);
         }

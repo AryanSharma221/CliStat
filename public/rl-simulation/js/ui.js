@@ -211,6 +211,7 @@ class UIController {
         // Indoor Temp Slider
         if (this.indoorTempSlider) {
             this.indoorTempSlider.addEventListener('input', (e) => {
+                this.indoorAvg.innerHTML = parseFloat(e.target.value).toFixed(1) + '<span class="unit">&deg;C</span>';
                 this.updateStats();
             });
         }
@@ -390,9 +391,13 @@ class UIController {
         // =====================================================================
         //  UPDATE DASHBOARD
         // =====================================================================
-        this.indoorAvg.innerHTML = indoorTemp.toFixed(1) + '<span class="unit">&deg;C</span>';
-
-        const finalDeviation = indoorTemp - targetTemp;
+        if (!this.indoorTempSlider) {
+            this.indoorAvg.innerHTML = indoorTemp.toFixed(1) + '<span class="unit">&deg;C</span>';
+        }
+        
+        // Use rawIndoorTemp for deviation if slider exists, else indoorTemp
+        const displayTemp = this.indoorTempSlider ? rawIndoorTemp : indoorTemp;
+        const finalDeviation = displayTemp - targetTemp;
         const sign = finalDeviation > 0 ? '+' : (finalDeviation < 0 ? '-' : '');
         this.deviationVal.textContent = sign + Math.abs(finalDeviation).toFixed(1);
 
