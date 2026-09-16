@@ -1,0 +1,17 @@
+services:
+  # 1. Node.js Gateway (Socket.io & Weather Proxy)
+  - type: web
+    name: thermo-node-gateway
+    env: node
+    buildCommand: cd server && npm install
+    startCommand: cd server && node index.js
+    envVars:
+      - key: WEATHER_API_KEY
+        value: f2a535c74ca8328f5e3abe55e599712b
+
+  # 2. Python ML Engine (XGBoost & FastAPI)
+  - type: web
+    name: thermo-ml-engine
+    env: python
+    buildCommand: cd rl-backend && pip install -r requirements.txt
+    startCommand: cd rl-backend && uvicorn app:app --host 0.0.0.0 --port $PORT

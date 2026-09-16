@@ -1,0 +1,12 @@
+{
+  "rewrites": [
+    {
+      "source": "/predict",
+      "destination": "https://REPLACE_ME_WITH_PYTHON_RENDER_URL.onrender.com/predict"
+    },
+    {
+      "source": "/api/weather(.*)",
+      "destination": "https://REPLACE_ME_WITH_NODE_RENDER_URL.onrender.com/api/weather$1"
+    }
+  ]
+}
