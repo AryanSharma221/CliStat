@@ -3,6 +3,7 @@ services:
   - type: web
     name: thermo-node-gateway
     env: node
+    plan: free
     buildCommand: cd server && npm install
     startCommand: cd server && node index.js
     envVars:
@@ -13,5 +14,6 @@ services:
   - type: web
     name: thermo-ml-engine
     env: python
+    plan: free
     buildCommand: cd rl-backend && pip install -r requirements.txt
     startCommand: cd rl-backend && uvicorn app:app --host 0.0.0.0 --port $PORT
