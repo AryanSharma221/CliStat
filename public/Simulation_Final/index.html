@@ -1,0 +1,305 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Predictive Environmental Intelligence</title>
+    <link rel="stylesheet" href="style.css">
+    
+    <!-- Three.js and Controls -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js?v=1789507833041"></script>
+    <script src="https://cdn.jsdelivr.net/npm/three@0.128.0/examples/js/controls/OrbitControls.js?v=1789507833041"></script>
+</head>
+<body>
+    <div id="error-log" style="position:fixed; top:0; left:0; z-index:9999; background:red; color:white; font-family:monospace; padding:10px; display:none;"></div>
+    <script>
+        window.onerror = function(msg, url, lineNo, columnNo, error) {
+            var log = document.getElementById('error-log');
+            log.style.display = 'block';
+            log.innerHTML += 'Error: ' + msg + '<br>Line: ' + lineNo + '<br>File: ' + url + '<hr>';
+            return false;
+        };
+    </script>
+    <div class="dashboard-grid">
+        
+        <!-- Left Sidebar: Controls -->
+        <aside class="sidebar left-sidebar">
+            <div class="brand">
+                <div class="brand-icon">⬡</div>
+                <span>PREDICTIVE ENVIRONMENTAL INTELLIGENCE</span>
+            </div>
+
+            <section class="control-section">
+                <h4>SIMULATION CONTROL</h4>
+                
+                <div class="control-group">
+                    <label>OPERATING MODE</label>
+                    <div class="mode-selector">
+                        <div class="mode-option active" id="mode-predictive">
+                            <span class="icon">✨</span>
+                            <div class="mode-text">
+                                <strong>Vision predictive</strong>
+                                <span>MPC + feed-forward logic</span>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <div class="timeline-header">
+                        <label>TIMELINE</label>
+                        <button id="reset-btn" class="text-btn">RESET</button>
+                    </div>
+                    <div class="time-display">
+                        <h2 id="clock-display">12:00</h2>
+                        <span id="date-display">WED - 21 JUN 2026</span>
+                    </div>
+                    <div class="slider-container">
+                        <input type="range" id="time-slider" min="0" max="24" step="0.1" value="12">
+                        <div class="slider-labels">
+                            <span>00:00</span>
+                            <span>solar window</span>
+                            <span>24:00</span>
+                        </div>
+                    </div>
+                    <div class="playback-controls">
+                        <button class="icon-btn" id="rewind-btn">&laquo; -1H</button>
+                        <button class="icon-btn primary" id="play-pause-btn">&#9654;</button>
+                        <button class="icon-btn" id="forward-btn">+1H &raquo;</button>
+                    </div>
+                </div>
+
+                <div class="control-group">
+                    <label>ENVIRONMENT PROFILE</label>
+                    <select id="environment-select" class="dropdown">
+                        <option value="office">Modern Office (Generated)</option>
+                        <option value="household">Household / Apartment</option>
+                    </select>
+                    
+                    <select id="season-select" class="dropdown mt-2">
+                        <option value="Summer">Summer</option>
+                        <option value="Spring">Spring</option>
+                        <option value="Fall">Fall</option>
+                        <option value="Winter">Winter</option>
+                    </select>
+
+                    <div style="margin-top: 20px;">
+                        <label style="display: flex; justify-content: space-between;">
+                            <span>OCCUPANCY</span>
+                            <span id="occupancy-val" style="color: var(--text-main);">0 people</span>
+                        </label>
+                        <input type="range" id="occupancy-slider" min="0" max="20" step="1" value="0" class="slider" style="width: 100%;">
+                    </div>
+
+                    <div style="margin-top: 20px; background: var(--bg-main); padding: 10px; border-radius: 8px; border: 1px solid var(--border-color);">
+                        <label>LIVE WEATHER (CHENNAI, IN)</label>
+                        <div id="weather-status" style="color: var(--accent-hover); font-size: 0.9em; margin-top: 4px;">
+                            Fetching from API...
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </aside>
+
+        <!-- Center: 3D View -->
+        <main class="main-center">
+            <header class="main-header">
+                <div class="title-area">
+                    <span class="subtitle">ARCHITECTURAL DIGITAL TWIN / UNIT 07</span>
+                    <h1>A living model of the office</h1>
+                    <p>Real-time geometry, materials, lighting, and thermal state - not a diagram.</p>
+                </div>
+                <div class="badge">
+                    <span class="dot"></span> REAL WEBGL SCENE
+                </div>
+            </header>
+
+            <div class="canvas-wrapper">
+                <div id="canvas-container"></div>
+            </div>
+
+            <footer class="main-footer">
+                <div class="status-area">
+                    <span class="subtitle">SCENE STATUS</span>
+                    <h3>Architectural model online</h3>
+                    <p>PHYSICALLY LIT • MOVING SUN • LIVE THERMAL LAYER</p>
+                </div>
+                <div class="event-card">
+                    <span class="subtitle">NEXT THERMAL EVENT ↗</span>
+                    <p>Sun reaches open workspace in <strong><span id="next-event-time">15 min</span></strong></p>
+                </div>
+            </footer>
+        </main>
+
+        <!-- Right Sidebar: Telemetry -->
+        <aside class="sidebar right-sidebar" id="right-sidebar">
+            <section class="telemetry-section">
+                <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:8px;">
+                    <h4 style="margin:0;">LIVE TELEMETRY</h4>
+                    <button id="formulas-toggle-btn" style="
+                        background: linear-gradient(135deg, #0ea5e9, #6366f1);
+                        border: none;
+                        color: #fff;
+                        padding: 5px 12px;
+                        border-radius: 6px;
+                        font-size: 0.7em;
+                        font-weight: 700;
+                        cursor: pointer;
+                        letter-spacing: 0.5px;
+                        transition: all 0.2s;
+                        font-family: inherit;
+                    ">⚙ FORMULAS</button>
+                </div>
+
+                <!-- FORMULAS OVERLAY PANEL (hidden by default) -->
+                <div id="formulas-panel" style="
+                    display: none;
+                    position: fixed;
+                    top: 0; right: 0;
+                    width: 520px;
+                    height: 100vh;
+                    background: linear-gradient(180deg, #050b14 0%, #0a1628 100%);
+                    border-left: 2px solid #0ea5e9;
+                    z-index: 9000;
+                    overflow-y: auto;
+                    padding: 24px 28px;
+                    box-shadow: -8px 0 40px rgba(0,0,0,0.7);
+                    font-family: 'Courier New', monospace;
+                    color: #cbd5e1;
+                    font-size: 0.78em;
+                    line-height: 1.8;
+                ">
+                    <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:20px; border-bottom: 1px solid #1e293b; padding-bottom:12px;">
+                        <h3 style="margin:0; color:#38bdf8; font-family:inherit; letter-spacing:1px;">⚙ LIVE COMPUTATION ENGINE</h3>
+                        <button id="formulas-close-btn" style="
+                            background: rgba(248,113,113,0.15);
+                            border: 1px solid #f87171;
+                            color: #f87171;
+                            padding: 4px 14px;
+                            border-radius: 6px;
+                            font-size: 1em;
+                            cursor: pointer;
+                            font-family: inherit;
+                        ">✕ CLOSE</button>
+                    </div>
+                    <div id="formulas-content">
+                        Waiting for simulation data...
+                    </div>
+                </div>
+
+                <div class="telemetry-card">
+                    <label>INDOOR AVERAGE</label>
+                    <div class="value-row">
+                        <h2 id="indoor-avg">22.0<span class="unit">&deg;C</span></h2>
+                    </div>
+                    <span class="subtext">
+                        <span id="deviation-val">+0.0</span>&deg; deviation from target
+                    </span>
+                </div>
+
+                <div class="telemetry-card" style="border: 1px solid #0ea5e9; background: rgba(14,165,233,0.05);">
+                    <label style="color:#0ea5e9">TARGET TEMPERATURE</label>
+                    <div class="value-row" style="display: flex; justify-content: space-between; align-items: center; margin-top: 5px;">
+                        <span id="target-temp-val" style="display:none;">22.0</span>
+                        <input type="number" id="target-temp-input" min="15" max="30" step="0.5" value="22.0" style="width: 80px; background: rgba(14,165,233,0.15); border: 1px solid #0ea5e9; color: white; border-radius: 6px; padding: 6px; font-size: 20px; font-weight: bold; text-align: center; font-family: inherit; margin: 0 auto;">
+                    </div>
+                    <input type="range" id="target-temp-slider" min="15" max="30" step="0.5" value="22.0" class="slider" style="margin-top:12px; width: 100%;">
+                </div>
+
+                <div class="telemetry-card">
+                    <label>PREDICTED HEAT LOAD</label>
+                    <div class="value-row">
+                        <h2 class="text-warning" id="heat-load">3.45<span class="unit">kW</span></h2>
+                    </div>
+                    <span class="subtext">solar load + occupancy</span>
+                </div>
+
+                <div class="telemetry-card">
+                    <label>HEAT EXCHANGE (HVAC)</label>
+                    <div class="value-row">
+                        <h2 class="text-accent" id="heat-exchange">-2.10<span class="unit">kW</span></h2>
+                    </div>
+                    <span class="subtext">cooling (-ve) | heating (+ve)</span>
+                </div>
+
+                <div class="telemetry-card">
+                    <label>HVAC POWER</label>
+                    <div class="value-row">
+                        <h2 class="text-accent" id="hvac-power">25<span class="unit">%</span></h2>
+                    </div>
+                    <span class="subtext" id="hvac-mode">cooling active • zone 01</span>
+                </div>
+
+                <div class="telemetry-card">
+                    <label>CARBON FOOTPRINT</label>
+                    <div class="value-row">
+                        <h2 id="carbon-rate">0.00<span class="unit">kg/h</span></h2>
+                    </div>
+                    <span class="subtext">grid: 0.82 kg CO₂/kWh &bull; <span id="carbon-status">India avg</span></span>
+                </div>
+
+
+
+                <div class="telemetry-card vectors-card">
+                    <label>Q PREDICTED / VECTORS</label>
+                    <ul class="vector-list">
+                        <li>
+                            <span class="dot dot-warning"></span>
+                            <span class="label">Solar radiation</span>
+                            <span class="val" id="vec-solar">65%</span>
+                        </li>
+                        <li>
+                            <span class="dot dot-accent"></span>
+                            <span class="label">Occupancy gain</span>
+                            <span class="val" id="vec-occ">20%</span>
+                        </li>
+                        <li>
+                            <span class="dot dot-purple"></span>
+                            <span class="label">Envelope drift</span>
+                            <span class="val" id="vec-env">10%</span>
+                        </li>
+                        <li>
+                            <span class="dot dot-danger"></span>
+                            <span class="label">Thermal decay</span>
+                            <span class="val" id="vec-decay">5%</span>
+                        </li>
+                    </ul>
+                </div>
+
+                <div class="telemetry-card" style="font-family: 'Courier New', monospace;">
+                    <label>ALGORITHM DECISION TRACE</label>
+                    <div id="algo-trace" style="font-size: 0.7em; line-height: 1.7; color: var(--text-dim); margin-top: 6px;">
+                        Initializing controllers...
+                    </div>
+                </div>
+            </section>
+        </aside>
+
+    </div>
+
+    <!-- Physics & Data Layer (Member 1) -->
+    <script src="js/vec3.js?v=1789507833041"></script>
+    <script src="js/config.js?v=1789507833041"></script>
+    <script src="js/sun.js?v=1789507833041"></script>
+    <script src="js/collision.js?v=1789507833041"></script>
+    <script src="js/physics.js?v=1789507833041"></script>
+    <script src="js/predictor.js?v=1789507833041"></script>
+
+    <!-- AI & Control Layer (Member 2 - Aryan) -->
+    <script src="js/controller.js?v=1789507833041"></script>
+    <script src="js/bangbang.js?v=1789507833041"></script>
+    <script src="js/blinds.js?v=1789507833041"></script>
+    <script src="js/sensors.js?v=1789507833041"></script>
+    <script src="js/kalman.js?v=1789507833041"></script>
+    <script src="js/anomaly.js?v=1789507833041"></script>
+    <script src="js/occupancy.js?v=1789507833041"></script>
+
+    <!-- 3D Visualization & UI (Member 3) -->
+    <script src="js/modelData.js?v=1789507833041"></script>
+    <script src="js/builder.js?v=1789507833041"></script>
+    <script src="js/simulation.js?v=1789507833041"></script>
+    <script src="js/viewer.js?v=1789507833041"></script>
+    <script src="js/ui.js?v=1789507833041"></script>
+    <script src="js/app.js?v=1789507833041"></script>
+</body>
+</html>

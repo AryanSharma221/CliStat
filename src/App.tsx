@@ -79,7 +79,9 @@ export default function App() {
     { label: "Problem",      href: "#problem" },
     { label: "How It Works", href: "#how-it-works" },
     { label: "Features",     href: "#features" },
+    { label: "Deep Dive",    href: "#deep-dive" },
     { label: "Demo",         href: "#demo" },
+    { label: "Impact",       href: "#impact" },
     { label: "Team",         href: "#team" },
   ];
 
@@ -282,7 +284,7 @@ export default function App() {
               <div key={s.step} style={{ position: "relative", paddingLeft: s.indent, paddingBottom: i < 2 ? 56 : 0 }}>
                 <span className="condensed" style={{ position: "absolute", left: s.indent, top: -20, fontSize: 140, lineHeight: 1, color: "rgba(0,0,0,0.04)", userSelect: "none", pointerEvents: "none", zIndex: 0 }}>{s.step}</span>
                 <div style={{ position: "relative", zIndex: 1 }}>
-                  <span className="mono" style={{ fontSize: 11, color: "var(--blue)", letterSpacing: "0.1em", display: "block", marginBottom: 12 }}>{s.step}</span>
+                  <span className="mono" style={{ fontSize: 11, color: "var(--ls-text)", fontWeight: 600, letterSpacing: "0.1em", display: "block", marginBottom: 12 }}>{s.step}</span>
                   <h3 className="condensed" style={{ fontSize: "clamp(36px, 4vw, 52px)", color: "var(--ls-text)", lineHeight: 1.05, marginBottom: 16 }}>{s.title}</h3>
                   <p style={{ fontSize: 15, lineHeight: 1.75, color: "var(--ls-text-sec)", maxWidth: 480 }}>{s.body}</p>
                 </div>
@@ -371,14 +373,14 @@ export default function App() {
             {
               stage: "03", phase: "DECIDE",
               label: "Control",
-              accent: "#c2692a",
+              accent: "var(--ls-text)",
               what: "The MPC algorithm solves for the lowest-cost cooling path that keeps the building comfortable. It weighs grid carbon intensity and pre-conditions the space before the heat arrives. Runs fully on-device.",
               signals: ["MPC optimization loop", "Grid carbon intensity", "15-minute trajectory", "Comfort boundary check"],
             },
             {
               stage: "04", phase: "OUTPUT",
               label: "Actuation",
-              accent: "#10c97a",
+              accent: "var(--ls-text)",
               what: "Commands are dispatched via MQTT to the HVAC actuators. The full cycle from sensor read to valve response completes in under one second, with no cloud round-trip.",
               signals: ["MQTT to HVAC unit", "Damper and valve control", "Status back-feed", "Time-series log"],
             },
@@ -406,6 +408,97 @@ export default function App() {
         </div>
       </section>
 
+      {/* ── MODEL DEEP DIVE ── */}
+      <section id="deep-dive" style={{ background: "var(--ls-bg)", borderTop: "1px solid var(--ls-border)", padding: "100px 32px" }}>
+        <div style={{ maxWidth: 1400, margin: "0 auto" }}>
+          <p className="label" style={{ marginBottom: 20, color: "var(--ls-text-mute)" }}>Algorithms & Physics</p>
+          <h2 className="condensed" style={{ fontSize: "clamp(40px, 5vw, 64px)", lineHeight: 1.05, color: "var(--ls-text)", marginBottom: 80 }}>
+            Inside the Engine Room
+          </h2>
+          
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(500px, 1fr))", gap: 40 }}>
+            {/* Left Card */}
+            <div style={{ background: "var(--ls-bg-alt)", border: "1px solid var(--ls-border)", borderRadius: 12, padding: 40 }}>
+              <h3 className="condensed" style={{ fontSize: 32, color: "var(--ls-text)", marginBottom: 8 }}>First-Principles Thermodynamics</h3>
+              <p className="mono" style={{ fontSize: 12, color: "var(--ls-text-mute)", marginBottom: 40, letterSpacing: "0.05em" }}>MPC + FEED-FORWARD PID · 3D RAY-AABB · KALMAN FUSION</p>
+              
+              <div style={{ marginBottom: 32 }}>
+                <p style={{ fontSize: 15, fontWeight: 600, color: "var(--ls-text)", marginBottom: 12 }}>5-Vector Heat Load Engine</p>
+                <div style={{ background: "var(--ls-bg)", border: "1px solid var(--ls-border)", padding: 16, borderRadius: 6, marginBottom: 16 }}>
+                  <p className="mono" style={{ fontSize: 13, color: "var(--ls-text)" }}>Q_total = Q_solar + Q_occupancy + Q_envelope + Q_latent + Q_decay</p>
+                </div>
+                <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+                  <li style={{ fontSize: 13, color: "var(--ls-text-sec)" }}><code className="mono" style={{ color: "var(--ls-text)", fontWeight: 600 }}>Q_solar</code> = I_sun × A_window × SHGC × G_solar / 1000 <span style={{ opacity: 0.5 }}>→ up to 1.28 kW peak</span></li>
+                  <li style={{ fontSize: 13, color: "var(--ls-text-sec)" }}><code className="mono" style={{ color: "var(--ls-text)", fontWeight: 600 }}>Q_occupancy</code> = N_people × 0.12 kW <span style={{ opacity: 0.5 }}>→ ASHRAE 55 standard</span></li>
+                  <li style={{ fontSize: 13, color: "var(--ls-text-sec)" }}><code className="mono" style={{ color: "var(--ls-text)", fontWeight: 600 }}>Q_envelope</code> = U × A × max(0, T_outdoor − T_target) / 1000</li>
+                  <li style={{ fontSize: 13, color: "var(--ls-text-sec)" }}><code className="mono" style={{ color: "var(--ls-text)", fontWeight: 600 }}>Q_latent</code> = 0.003 × max(0, RH − 50%) × A_env</li>
+                  <li style={{ fontSize: 13, color: "var(--ls-text-sec)" }}><code className="mono" style={{ color: "var(--ls-text)", fontWeight: 600 }}>Q_decay</code> = stored_heat × e^(−0.02·Δt) <span style={{ opacity: 0.5 }}>→ exponential re-radiation</span></li>
+                </ul>
+              </div>
+
+              <div style={{ marginBottom: 32 }}>
+                <p style={{ fontSize: 15, fontWeight: 600, color: "var(--ls-text)", marginBottom: 12 }}>PID + Feed-Forward Controller</p>
+                <div style={{ background: "var(--ls-bg)", border: "1px solid var(--ls-border)", padding: 16, borderRadius: 6, marginBottom: 12 }}>
+                  <p className="mono" style={{ fontSize: 13, color: "var(--ls-text)" }}>u(t) = Kp·e(t) + Ki·∫e·dt + Kd·de/dt + Kff·Q_predicted</p>
+                </div>
+                <p style={{ fontSize: 13, color: "var(--ls-text-sec)" }}>Kp=3.0, Ki=0.1, Kd=0.5, Kff=1.2. Anti-windup integral clamping [−50, +50]</p>
+              </div>
+
+              <div>
+                <p style={{ fontSize: 15, fontWeight: 600, color: "var(--ls-text)", marginBottom: 12 }}>Kalman Sensor Fusion</p>
+                <div style={{ background: "var(--ls-bg)", border: "1px solid var(--ls-border)", padding: 16, borderRadius: 6, marginBottom: 12 }}>
+                  <p className="mono" style={{ fontSize: 13, color: "var(--ls-text)", marginBottom: 8 }}>K = p⁻ / (p⁻ + r) <span style={{ opacity: 0.5, float: "right" }}>// Kalman Gain</span></p>
+                  <p className="mono" style={{ fontSize: 13, color: "var(--ls-text)" }}>x̂ = x̂ + K·(z − x̂) <span style={{ opacity: 0.5, float: "right" }}>// BLUE estimate</span></p>
+                </div>
+              </div>
+            </div>
+
+            {/* Right Card */}
+            <div style={{ background: "var(--ls-bg-alt)", border: "1px solid var(--ls-border)", borderRadius: 12, padding: 40 }}>
+              <h3 className="condensed" style={{ fontSize: 32, color: "var(--ls-text)", marginBottom: 8 }}>Gradient Boosted Trees</h3>
+              <p className="mono" style={{ fontSize: 12, color: "var(--ls-text-mute)", marginBottom: 40, letterSpacing: "0.05em" }}>XGBREGRESSOR · 21 FEATURES · 35K TRAINING SAMPLES</p>
+              
+              <div style={{ marginBottom: 32 }}>
+                <p style={{ fontSize: 15, fontWeight: 600, color: "var(--ls-text)", marginBottom: 12 }}>Model Architecture</p>
+                <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+                  <li style={{ fontSize: 13, color: "var(--ls-text-sec)" }}>• 100 gradient boosted trees, max depth 6</li>
+                  <li style={{ fontSize: 13, color: "var(--ls-text-sec)" }}>• Learning rate η = 0.1</li>
+                  <li style={{ fontSize: 13, color: "var(--ls-text-sec)" }}>• Objective: Mean Squared Error (<code className="mono" style={{ color: "var(--ls-text)", fontWeight: 600 }}>reg:squarederror</code>)</li>
+                  <li style={{ fontSize: 13, color: "var(--ls-text-sec)" }}>• Live inference: <code className="mono" style={{ color: "var(--ls-text)", fontWeight: 600 }}>P_room = max(0, XGBoost(X_room))</code></li>
+                </ul>
+              </div>
+
+              <div style={{ marginBottom: 32 }}>
+                <p style={{ fontSize: 15, fontWeight: 600, color: "var(--ls-text)", marginBottom: 12 }}>21-Dimensional Feature Vector</p>
+                <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 12 }}>
+                  <li style={{ fontSize: 13, color: "var(--ls-text-sec)" }}><strong>Temporal:</strong> hour_sin, hour_cos, month_sin, month_cos, day_of_week</li>
+                  <li style={{ fontSize: 13, color: "var(--ls-text-sec)" }}><strong>Weather:</strong> outside_temp, humidity, wind_speed, solar_radiation</li>
+                  <li style={{ fontSize: 13, color: "var(--ls-text-sec)" }}><strong>Thermal:</strong> room_temp, required_temp, heating_setpoint, temp_diff, setpoint_error</li>
+                  <li style={{ fontSize: 13, color: "var(--ls-text-sec)" }}><strong>Spatial:</strong> occupancy, room_area, window_area, direction (N/S/E/W one-hot)</li>
+                </ul>
+              </div>
+
+              <div style={{ marginBottom: 32 }}>
+                <p style={{ fontSize: 15, fontWeight: 600, color: "var(--ls-text)", marginBottom: 12 }}>Cyclical Feature Engineering</p>
+                <div style={{ background: "var(--ls-bg)", border: "1px solid var(--ls-border)", padding: 16, borderRadius: 6, marginBottom: 12 }}>
+                  <p className="mono" style={{ fontSize: 13, color: "var(--ls-text)", marginBottom: 8 }}>hour_sin = Math.sin(2 * Math.PI * hour / 24)</p>
+                  <p className="mono" style={{ fontSize: 13, color: "var(--ls-text)" }}>hour_cos = Math.cos(2 * Math.PI * hour / 24)</p>
+                </div>
+                <p style={{ fontSize: 13, color: "var(--ls-text-sec)" }}>Prevents discontinuity at the midnight boundary.</p>
+              </div>
+
+              <div>
+                <p style={{ fontSize: 15, fontWeight: 600, color: "var(--ls-text)", marginBottom: 12 }}>Live Hardware Integration</p>
+                <ul style={{ listStyle: "none", padding: 0, margin: 0, display: "flex", flexDirection: "column", gap: 8 }}>
+                  <li style={{ fontSize: 13, color: "var(--ls-text-sec)" }}>• Windows Wi-Fi Direct ARP sniffing for real-time occupancy</li>
+                  <li style={{ fontSize: 13, color: "var(--ls-text-sec)" }}>• OpenWeatherMap API with 60s TTL cache</li>
+                </ul>
+              </div>
+            </div>
+          </div>
+        </div>
+      </section>
+
       {/* ── DEMO / DIGITAL TWIN ── */}
       <section id="demo" style={{ background: "var(--ls-bg)", borderTop: "1px solid var(--ls-border)", padding: "100px 32px" }}>
         <div style={{ maxWidth: 1400, margin: "0 auto" }}>
@@ -414,17 +507,101 @@ export default function App() {
             <h2 className="condensed" style={{ fontSize: "clamp(40px, 5vw, 64px)", lineHeight: 1.05, color: "var(--ls-text)" }}>
               Vision-Predictive Digital Twin
             </h2>
-            <p style={{ fontSize: 16, lineHeight: 1.75, color: "var(--ls-text-sec)" }}>
-              Interact with the live simulation. The system tracks sun angles, room thermal mass, and occupancy, projecting the thermal state 15 minutes forward to optimize HVAC power via PID+FF and MPC algorithms.
-            </p>
+            <div>
+              <p style={{ fontSize: 16, lineHeight: 1.75, color: "var(--ls-text-sec)", marginBottom: 20 }}>
+                Interact with the live simulations. The Physics Engine tracks heat transfer in real-time, while the RL Agent optimizes control using XGBoost.
+              </p>
+              <div style={{ display: "flex", gap: 10 }}>
+                <button onClick={() => {
+                  document.getElementById('iframe-physics').style.display = 'block';
+                  document.getElementById('iframe-rl').style.display = 'none';
+                  document.getElementById('btn-physics').style.border = '1px solid var(--ls-text)';
+                  document.getElementById('btn-rl').style.border = '1px solid var(--ls-border)';
+                }} id="btn-physics" style={{ background: "transparent", color: "var(--ls-text)", fontSize: 13, padding: "8px 16px", border: "1px solid var(--ls-text)", borderRadius: 6, cursor: "pointer" }}>
+                  Physics Engine (Vision-Predictive)
+                </button>
+                <button onClick={() => {
+                  document.getElementById('iframe-physics').style.display = 'none';
+                  document.getElementById('iframe-rl').style.display = 'block';
+                  document.getElementById('btn-physics').style.border = '1px solid var(--ls-border)';
+                  document.getElementById('btn-rl').style.border = '1px solid var(--ls-text)';
+                }} id="btn-rl" style={{ background: "transparent", color: "var(--ls-text)", fontSize: 13, padding: "8px 16px", border: "1px solid var(--ls-border)", borderRadius: 6, cursor: "pointer" }}>
+                  RL Agent (XGBoost)
+                </button>
+              </div>
+            </div>
           </div>
           
-          <div style={{ width: '100%', height: '800px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--ls-border)', background: '#000' }}>
+          <div style={{ width: '100%', height: '800px', borderRadius: '12px', overflow: 'hidden', border: '1px solid var(--ls-border)', background: '#000', position: 'relative' }}>
             <iframe 
-              src="/thermostat/index.html" 
-              style={{ width: '100%', height: '100%', border: 'none' }}
+              id="iframe-physics"
+              src="/Simulation_Final/index.html" 
+              style={{ width: '100%', height: '100%', border: 'none', display: 'block' }}
               title="Predictive Thermostat Simulation"
             />
+            <iframe 
+              id="iframe-rl"
+              src="/rl-simulation/index.html" 
+              style={{ width: '100%', height: '100%', border: 'none', display: 'none' }}
+              title="RL Thermostat Simulation"
+            />
+          </div>
+        </div>
+      </section>
+
+      {/* ── IMPACT ── */}
+      <section id="impact" style={{ background: "var(--ls-bg-alt)", borderTop: "1px solid var(--ls-border)", padding: "100px 32px" }}>
+        <div style={{ maxWidth: 1400, margin: "0 auto" }}>
+          <p className="label" style={{ marginBottom: 20, color: "var(--ls-text-mute)" }}>System Impact</p>
+          <h2 className="condensed" style={{ fontSize: "clamp(40px, 5vw, 64px)", lineHeight: 1.05, color: "var(--ls-text)", marginBottom: 60 }}>
+            Measured Efficiency
+          </h2>
+
+          <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(350px, 1fr))", gap: 24, marginBottom: 80 }}>
+            {[
+              { val: "32%", title: "Energy Savings", desc: "vs. bang-bang reactive baseline (measured over 24h simulation cycles)", color: "#16a34a" },
+              { val: "15 min", title: "Predictive Lookahead", desc: "MPC optimization horizon with 5-min step resolution", color: "#0ea5e9" },
+              { val: "5", title: "Heat Vectors", desc: "Simultaneous physics vectors: Solar, Occupancy, Envelope, Humidity, Decay", color: "#d97706" },
+              { val: "< 1 sec", title: "Response Time", desc: "Full sensor-to-actuator loop, edge-native, no cloud dependency", color: "#8b5cf6" },
+              { val: "21", title: "ML Features", desc: "Engineered feature vector driving XGBoost demand prediction", color: "#eab308" },
+              { val: "0.82", title: "kg CO₂/kWh", desc: "India National Grid average tracked for ToU emissions optimization", color: "#ef4444" }
+            ].map(stat => (
+              <div key={stat.title} style={{ background: "var(--ls-bg)", border: "1px solid var(--ls-border)", padding: "32px", borderRadius: 8 }}>
+                <p className="condensed" style={{ fontSize: 64, color: stat.color, lineHeight: 1, marginBottom: 16 }}>{stat.val}</p>
+                <p style={{ fontSize: 18, fontWeight: 600, color: "var(--ls-text)", marginBottom: 12 }}>{stat.title}</p>
+                <p style={{ fontSize: 14, lineHeight: 1.6, color: "var(--ls-text-sec)" }}>{stat.desc}</p>
+              </div>
+            ))}
+          </div>
+
+          <div style={{ overflowX: "auto" }}>
+            <table style={{ width: "100%", borderCollapse: "collapse", textAlign: "left", minWidth: 800 }}>
+              <thead>
+                <tr style={{ borderBottom: "2px solid var(--ls-border)" }}>
+                  <th style={{ padding: "16px 24px", color: "var(--ls-text)", fontSize: 14, textTransform: "uppercase", letterSpacing: "0.05em" }}>Metric</th>
+                  <th style={{ padding: "16px 24px", color: "#0ea5e9", fontSize: 14, textTransform: "uppercase", letterSpacing: "0.05em" }}>Vision-Predictive (MPC)</th>
+                  <th style={{ padding: "16px 24px", color: "#d97706", fontSize: 14, textTransform: "uppercase", letterSpacing: "0.05em" }}>RL Agent (XGBoost)</th>
+                  <th style={{ padding: "16px 24px", color: "var(--ls-text-mute)", fontSize: 14, textTransform: "uppercase", letterSpacing: "0.05em" }}>Standard Thermostat</th>
+                </tr>
+              </thead>
+              <tbody>
+                {[
+                  { m: "Control Method", v: "Feed-Forward PID + MPC", r: "Gradient Boosted Trees", s: "Bang-Bang (on/off)" },
+                  { m: "Lookahead", v: "15 minutes", r: "Real-time inference", s: "None (reactive only)" },
+                  { m: "Heat Modeling", v: "5-vector physics ODE", r: "21-feature regression", s: "Single thermocouple" },
+                  { m: "Peak Shifting", v: "Grid-aware ToU scheduling", r: "Demand prediction", s: "None" },
+                  { m: "Anomaly Detection", v: "3-heuristic sliding window", r: "N/A", s: "None" },
+                  { m: "Sensor Fusion", v: "Kalman (BLUE) multi-sensor", r: "ARP + Weather API", s: "Single sensor" }
+                ].map((row, i) => (
+                  <tr key={row.m} style={{ borderBottom: "1px solid var(--ls-border)", background: i % 2 === 0 ? "transparent" : "rgba(255,255,255,0.02)" }}>
+                    <td style={{ padding: "20px 24px", color: "var(--ls-text)", fontWeight: 500 }}>{row.m}</td>
+                    <td style={{ padding: "20px 24px", color: "var(--ls-text-sec)" }}>{row.v}</td>
+                    <td style={{ padding: "20px 24px", color: "var(--ls-text-sec)" }}>{row.r}</td>
+                    <td style={{ padding: "20px 24px", color: "var(--ls-text-mute)" }}>{row.s}</td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
           </div>
         </div>
       </section>
@@ -442,7 +619,7 @@ export default function App() {
             { name: "Harnoor Kant",  role: "AI + Control Systems",  detail: "MPC algorithm, PID executor, MQTT actuation pipeline",                   align: "flex-end"   as const, nameSize: 56 },
           ].map(m => (
             <div key={m.name} style={{ borderTop: "1px solid var(--ls-border)", padding: "36px 0", display: "flex", flexDirection: "column", alignItems: m.align }}>
-              <p className="mono" style={{ fontSize: 10, color: "var(--blue)", letterSpacing: "0.12em", marginBottom: 10 }}>{m.role.toUpperCase()}</p>
+              <p className="mono" style={{ fontSize: 10, color: "var(--ls-text)", fontWeight: 600, letterSpacing: "0.12em", marginBottom: 10 }}>{m.role.toUpperCase()}</p>
               <p className="condensed" style={{ fontSize: m.nameSize, color: "var(--ls-text)", lineHeight: 1, marginBottom: 12 }}>{m.name}</p>
               <p style={{ fontSize: 13, color: "var(--ls-text-sec)", maxWidth: 320, textAlign: m.align === "center" ? "center" : m.align === "flex-end" ? "right" : "left" }}>{m.detail}</p>
             </div>
