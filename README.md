@@ -1,11 +1,11 @@
-# Predictive Environmental Intelligence (PEI)
-> **A Climate-Adaptive Smart Thermostat System**
+# CliStat
+> **Predictive Environmental Intelligence (PEI)**
 
 ![System Architecture](https://img.shields.io/badge/Architecture-Edge_Native-0ea5e9)
 ![Energy Savings](https://img.shields.io/badge/Energy_Savings-32%25-16a34a)
 ![Response Time](https://img.shields.io/badge/Response_Time-<1_sec-8b5cf6)
 
-*Reactive cooling is a design flaw, not a feature.* Traditional thermostats wait for the room to get hot before turning on, blasting maximum power during peak grid hours. **PEI** is a closed-loop intelligence layer that replaces guesswork with physics. It acts 15 minutes before the heat arrives.
+*Reactive cooling is a design flaw, not a feature.* Traditional thermostats wait for the room to get hot before turning on, blasting maximum power during peak grid hours. **CliStat** is a closed-loop intelligence layer that replaces guesswork with physics. It acts 15 minutes before the heat arrives.
 
 ## ?? The Dual-Model Architecture
 
