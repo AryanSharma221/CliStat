@@ -20,9 +20,9 @@ class AnomalyDetector {
         for (const room of rooms) {
             const oldRoom = oldest.rooms.find(r => r.id === room.id);
             const hvacPower = hvacState[room.id] || 0;
-            const tempDiff = room.tempF - oldRoom.tempF;
+            const tempDiff = room.tempC - oldRoom.tempC;
 
-            if (hvacPower > 50 && tempDiff > 0.5 && weather.outdoorTempF > room.tempF + 5) {
+            if (hvacPower > 50 && tempDiff > 0.5 && weather.outdoorTempC > room.tempC + 3) {
                 alerts.push({
                     type: 'WINDOW_OPEN',
                     severity: 'High',
@@ -40,7 +40,7 @@ class AnomalyDetector {
                 });
             }
 
-            if (hvacPower > 80 && tempDiff > -0.1 && weather.outdoorTempF < 90 && solarLoad < 0.5) {
+            if (hvacPower > 80 && tempDiff > -0.1 && weather.outdoorTempC < 32 && solarLoad < 0.5) {
                 alerts.push({
                     type: 'HVAC_DEGRADATION',
                     severity: 'High',

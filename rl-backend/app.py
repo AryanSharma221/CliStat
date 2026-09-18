@@ -9,29 +9,32 @@ from datetime import datetime
 import subprocess
 import requests
 import re
+import os
+from pathlib import Path
 
 app = FastAPI(title="HVAC Power Prediction API")
 
 # Enable CORS so the browser simulation can call this API
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
+    allow_origins=os.getenv("ALLOWED_ORIGINS", "*").split(","),
+    allow_credentials=False,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
 # Load model and features on startup
 try:
-    model = joblib.load('model/xgboost_hvac.joblib')
-    feature_names = joblib.load('model/feature_names.joblib')
+    MODEL_DIR = Path(__file__).resolve().parent / "model"
+    model = joblib.load(MODEL_DIR / "xgboost_hvac.joblib")
+    feature_names = joblib.load(MODEL_DIR / "feature_names.joblib")
 except Exception as e:
     print(f"Error loading model. Did you run train.py first? {e}")
     model = None
     feature_names = None
 
 # OpenWeatherMap API Key
-WEATHER_API_KEY = "f2a535c74ca8328f5e3abe55e599712b"
+WEATHER_API_KEY = os.getenv("WEATHER_API_KEY", "f2a535c74ca8328f5e3abe55e599712b")
 
 # ─── Hotspot Occupancy ────────────────────────────────────────────────────────
 
@@ -40,6 +43,9 @@ def get_hotspot_device_count():
     Counts devices connected to the Windows Mobile Hotspot
     by identifying the Wi-Fi Direct Virtual Adapter IP and parsing its ARP block.
     """
+    import platform
+    if platform.system() != "Windows":
+        return 0
     try:
         ipconfig_out = subprocess.check_output("ipconfig /all", shell=True).decode('utf-8', errors='ignore')
         hotspot_ip = None
@@ -86,7 +92,7 @@ def get_live_weather(city="Chennai"):
     if _weather_cache["data"] and (now - _weather_cache["timestamp"]) < 60:
         return _weather_cache["data"]
 
-    url = f"http://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
+    url = f"https://api.openweathermap.org/data/2.5/weather?q={city}&appid={WEATHER_API_KEY}&units=metric"
     try:
         response = requests.get(url, timeout=5)
         response.raise_for_status()
@@ -184,8 +190,8 @@ def predict_hvac_power(request: PredictionRequest):
             wind_speed = request.wind_speed
             solar_rad = request.solar_radiation
 
-        # Use outdoor temp as room temperature proxy
-        room_temp = outside_temp
+        # Use the actual room temperature from the simulation state
+        room_temp = request.room_temperature
 
         dt = datetime.fromisoformat(request.timestamp)
         hour = dt.hour + dt.minute / 60.0
@@ -223,8 +229,16 @@ def predict_hvac_power(request: PredictionRequest):
             features['dir_West'] = 1 if room.room_direction.lower() == 'west' else 0
 
             df = pd.DataFrame([features])[feature_names]
-            predicted_w = max(0.0, float(model.predict(df)[0]))
-            load_pct = (predicted_w / request.max_hvac_capacity_w) * 100.0
+            
+            # The XGBoost model natively outputs negative power for heating and positive for cooling
+            predicted_w = float(model.predict(df)[0])
+            
+            # Ensure we don't exceed max capacity FOR THIS ROOM (in both positive cooling and negative heating directions)
+            room_max_capacity = request.max_hvac_capacity_w / max(len(request.rooms), 1)
+            predicted_w = max(-room_max_capacity, min(predicted_w, room_max_capacity))
+
+            # The load percentage can be negative (heating) or positive (cooling)
+            load_pct = (predicted_w / room_max_capacity) * 100.0
 
             per_room_results[room.room_id] = {
                 "predicted_power_w": round(predicted_w, 2),
@@ -236,15 +250,15 @@ def predict_hvac_power(request: PredictionRequest):
             }
             total_power_w += predicted_w
 
-        avg_power_w = total_power_w / max(len(request.rooms), 1)
-        avg_load_pct = (avg_power_w / request.max_hvac_capacity_w) * 100.0
+        # The overall load percentage of the ENTIRE house
+        total_load_pct = (total_power_w / request.max_hvac_capacity_w) * 100.0
 
         return {
             "per_room": per_room_results,
             "total_power_w": round(total_power_w, 2),
             "total_power_kw": round(total_power_w / 1000.0, 2),
-            "avg_power_w": round(avg_power_w, 2),
-            "avg_load_percentage": round(avg_load_pct, 1),
+            "avg_power_w": round(total_power_w / max(len(request.rooms), 1), 2),
+            "avg_load_percentage": round(total_load_pct, 1),
             "max_capacity_w": request.max_hvac_capacity_w,
             "live_data": {
                 "occupancy_from_hotspot": live_occupancy,

@@ -7,7 +7,7 @@
 // Pushes ML-predicted HVAC power into the simulation via window.SimulationAPI.
 
 const ML_BRIDGE = {
-    API_BASE: 'http://localhost:8000',
+    API_BASE: window.location.hostname === 'localhost' ? 'http://localhost:8000' : '',
     POLL_INTERVAL: 5000,
     lastPrediction: null,
     lastWeather: null,
@@ -131,6 +131,9 @@ const ML_BRIDGE = {
         // Override HVAC display via SimulationAPI
         if (window.SimulationAPI && window.SimulationAPI.overrideHVAC) {
             const avgPower = pred.avg_load_percentage || 0;
+            
+            // The RL model correctly outputs negative load for heating and positive load for cooling.
+            // The physics engine expects -ve exchangeKw for cooling, +ve for heating.
             const exchangeKw = -1 * (avgPower / 100) * 5.0;
             const modeLabel = 'XGBoost ML Model (Live)';
             window.SimulationAPI.overrideHVAC(avgPower, exchangeKw, modeLabel);

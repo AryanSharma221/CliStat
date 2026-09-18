@@ -7,12 +7,15 @@
     "dev": "vite",
     "build": "vite build",
     "preview": "vite preview",
-    "format": "oxfmt"
+    "format": "oxfmt",
+    "dev:frontend": "vite",
+    "dev:node": "cd server && npm install && node index.js",
+    "dev:fastapi": "cd rl-backend && python app.py",
+    "dev:all": "concurrently \"npm run dev:frontend\" \"npm run dev:node\" \"npm run dev:fastapi\""
   },
   "dependencies": {
     "react": "^19.0.0",
-    "react-dom": "^19.0.0",
-    "recharts": "^3.10.1"
+    "react-dom": "^19.0.0"
   },
   "devDependencies": {
     "@tailwindcss/vite": "^4.0.0",
@@ -20,6 +23,7 @@
     "@types/react": "^19.0.0",
     "@types/react-dom": "^19.0.0",
     "@vitejs/plugin-react": "^6.0.0",
+    "concurrently": "^10.0.5",
     "oxfmt": "^0.2.0",
     "tailwindcss": "^4.0.0",
     "typescript": "^5.7.0",

@@ -40,7 +40,7 @@ document.addEventListener("DOMContentLoaded", () => {
     const standardController = typeof BangBangController !== 'undefined' ? new BangBangController(0.5) : null;
     
     const sensorNetwork = typeof IoTSensorNetwork !== 'undefined' && typeof CONFIG !== 'undefined' ? new IoTSensorNetwork(CONFIG.ROOMS) : null;
-    const sensorFusion = typeof MultiSensorFusion !== 'undefined' && typeof CONFIG !== 'undefined' ? new MultiSensorFusion(CONFIG.ROOMS) : null;
+    const sensorFusion = typeof MultiSensorFusion !== 'undefined' && typeof CONFIG !== 'undefined' && sensorNetwork ? new MultiSensorFusion(sensorNetwork.sensors) : null;
     const anomalyDetector = typeof AnomalyDetector !== 'undefined' ? new AnomalyDetector() : null;
 
     // 6. Main Game/Animation Loop
@@ -138,13 +138,13 @@ document.addEventListener("DOMContentLoaded", () => {
                 avgTarget /= roomCount;
 
                 // Run Multi-Room Thermodynamics
-                if (typeof updateMultiRoomTemperatures !== 'undefined' && CONFIG.CONNECTIONS) {
+                if (typeof updateMultiRoomTemperatures !== 'undefined' && CONFIG.ROOM_CONNECTIONS) {
                     const qPerRoom = {};
                     rooms.forEach(r => qPerRoom[r.id] = (qData && qData.perRoom[r.id]) ? qData.perRoom[r.id].total : 0);
                     if (activeAnomaly && rooms.length > 0) {
                         qPerRoom[rooms[0].id] += 80000; // Dump 80kW of thermal energy (Broken Window / Heat Blast)
                     }
-                    updateMultiRoomTemperatures(rooms, CONFIG.CONNECTIONS, qPerRoom, hvacState, dt);
+                    updateMultiRoomTemperatures(rooms, CONFIG.ROOM_CONNECTIONS, qPerRoom, hvacState, dt);
                 }
                 
                 // --- PUSH DATA TO UI ---
