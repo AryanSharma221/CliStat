@@ -1,10 +1,11 @@
 # CliStat
+CLIMATE ADAPTIVE SMART THERMOSTAT
 
-A full-stack, cyber-physical smart thermostat ecosystem designed to completely rethink building HVAC management. Instead of relying on legacy "react-to-drop" mechanicsGÇöwhere a system only cools a room *after* the physical environment has already become uncomfortably hotGÇöthis platform utilizes Machine Learning, real-time weather APIs, and zero-hardware occupancy tracking to proactively calculate thermal load. By mathematically determining the room's energy shift before it happens, the system maintains perfect thermal comfort while aggressively minimizing energy consumption.
+A full-stack, smart thermostat ecosystem designed to completely rethink building HVAC management. Instead of relying on legacy "react-to-drop" mechanicsGÃ‡Ã¶where a system only cools a room *after* the physical environment has already become uncomfortably hotGÃ‡Ã¶this platform utilizes Machine Learning, real-time weather APIs, and zero-hardware occupancy tracking to proactively calculate thermal load. By mathematically determining the room's energy shift before it happens, the system maintains perfect thermal comfort while aggressively minimizing energy consumption.
 
 ---
 
-## =ƒÅùn+Å System Architecture & Deep Technical Segregation
+## =Æ’Ã…Ã¹n+Ã… System Architecture & Deep Technical Segregation
 
 The platform is engineered as a highly decoupled, modern microservice architecture. It is strictly segregated into four distinct technological domains: **Frontend Tech**, **Backend Tech**, **The Simulation Engine**, and **The RL Model (Predictive Engine)**.
 
@@ -34,12 +35,12 @@ The API routing layer acts as the traffic controller, bridging the frontend inte
 The heart of the cyber-physical environment. Because testing HVAC algorithms on physical buildings takes months, this module calculates the exact physical heat loads acting on a room in real-time, creating a mathematically perfect playground for AI to operate within.
 
 - **Technology Stack:** Socket.IO, Custom JavaScript Physics Engine (`services/iotSimulator.js` & `ui.js`).
-- **IoT Hardware Mocking:** To emulate real-world hardware constraints, the engine simulates an array of 5 I2C temperature sensors communicating at 800ms intervals. To ensure the ML model doesn't overfit to perfect data, Box-Muller transforms are utilized to inject natural Gaussian noise (-¦0.4-¦F standard deviation) and spatial bias into the temperature readings.
+- **IoT Hardware Mocking:** To emulate real-world hardware constraints, the engine simulates an array of 5 I2C temperature sensors communicating at 800ms intervals. To ensure the ML model doesn't overfit to perfect data, Box-Muller transforms are utilized to inject natural Gaussian noise (-Â¦0.4-Â¦F standard deviation) and spatial bias into the temperature readings.
 - **Proactive Thermodynamics (The 'Q' Vectors):** The simulation calculates exact thermodynamic vectors to simulate the room environment before feeding it to the controller. Standard thermostats fail because they don't know *why* a room is getting hot. Our engine calculates:
-  - **$Q_{Solar}$ (Solar Heat Gain):** Calculated as `SunIntensity +ù WindowArea +ù SHGC +ù SolarIrradiance`. Instead of static numbers, it uses real-time cloud cover and solar positioning to dynamically compute how much solar radiation is actively passing through the 8m-¦ windows (assuming a Solar Heat Gain Coefficient of 0.4).
-  - **$Q_{Occupancy}$ (Body Heat):** Calculated as `Occupancy +ù 0.12 kW`. This is strictly based on the ASHRAE 55 standard, which dictates that an average office worker emits approximately 120 Watts of metabolic heat.
-  - **$Q_{Envelope}$ (Wall Leakage):** Calculated as `(U_envelope +ù A_envelope +ù DeltaT) / 1000`. Using a standard U-value of 0.35 W/m-¦K, it calculates the thermal bleed through the building's exterior walls based on the difference between indoor and outdoor temperatures.
-  - **$Q_{Decay}$ (Thermal Mass):** Calculated as `Q_Solar +ù 0.08`. It accounts for the 8% of solar energy that is absorbed by physical objects (desks, floors) and slowly re-radiates over time.
+  - **$Q_{Solar}$ (Solar Heat Gain):** Calculated as `SunIntensity +Ã¹ WindowArea +Ã¹ SHGC +Ã¹ SolarIrradiance`. Instead of static numbers, it uses real-time cloud cover and solar positioning to dynamically compute how much solar radiation is actively passing through the 8m-Â¦ windows (assuming a Solar Heat Gain Coefficient of 0.4).
+  - **$Q_{Occupancy}$ (Body Heat):** Calculated as `Occupancy +Ã¹ 0.12 kW`. This is strictly based on the ASHRAE 55 standard, which dictates that an average office worker emits approximately 120 Watts of metabolic heat.
+  - **$Q_{Envelope}$ (Wall Leakage):** Calculated as `(U_envelope +Ã¹ A_envelope +Ã¹ DeltaT) / 1000`. Using a standard U-value of 0.35 W/m-Â¦K, it calculates the thermal bleed through the building's exterior walls based on the difference between indoor and outdoor temperatures.
+  - **$Q_{Decay}$ (Thermal Mass):** Calculated as `Q_Solar +Ã¹ 0.08`. It accounts for the 8% of solar energy that is absorbed by physical objects (desks, floors) and slowly re-radiates over time.
 - **The Predictive Delta:** By summing these vectors ($Q_{Total} = Q_{Solar} + Q_{Occupancy} + Q_{Envelope} + Q_{Decay}$), the engine divides the total kW load by the building's heat loss coefficient. This tells the system exactly how hot the room *will* get, a full 15 minutes before the physical sensors register the spike, allowing the HVAC to ramp up preemptively.
 
 ---
