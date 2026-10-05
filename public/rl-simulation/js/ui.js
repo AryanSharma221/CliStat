@@ -48,9 +48,6 @@ class UIController {
             setTargetTemp: (temp) => {
                 this.targetTempSlider.value = temp;
                 this.targetTempVal.textContent = parseFloat(temp).toFixed(1);
-                if (this.targetTempValDisplay) {
-                    this.targetTempValDisplay.innerHTML = parseFloat(temp).toFixed(1) + '<span class="unit">&deg;C</span>';
-                }
                 this.updateStats();
             },
             setTime: (time) => {
@@ -59,6 +56,7 @@ class UIController {
             },
             overrideHVAC: (powerPct, exchangeKw, modeString) => {
                 this.mlPowerPct = powerPct;
+                this.mlModeLabel = modeString;
                 this.hvacPower.innerHTML = Math.round(powerPct) + '<span class="unit">%</span>';
                 this.heatExchange.innerHTML = (exchangeKw > 0 ? '+' : '') + parseFloat(exchangeKw).toFixed(2) + '<span class="unit">kW</span>';
                 this.hvacMode.innerHTML = modeString;
@@ -89,17 +87,17 @@ class UIController {
     bindElements() {
         this.clockDisplay = document.getElementById('clock-display');
         this.dateDisplay = document.getElementById('date-display');
-        
         this.modePredictive = document.getElementById('mode-predictive');
-        this.modeStandard = document.getElementById('mode-standard');
         
         this.nextEventTime = document.getElementById('next-event-time');
 
         // Telemetry Elements
         this.targetTempSlider = document.getElementById('target-temp-slider');
         this.targetTempVal = document.getElementById('target-temp-val');
-        this.targetTempValDisplay = document.getElementById('target-temp-val-display'); // The new H2 display
+        this.targetTempVal2 = document.getElementById('target-temp-val-2');
         this.indoorTempSlider = document.getElementById('indoor-temp-slider');
+        this.manualIndoorVal = document.getElementById('manual-indoor-val');
+        
         this.indoorAvg = document.getElementById('indoor-avg');
         this.deviationVal = document.getElementById('deviation-val');
         this.heatLoad = document.getElementById('heat-load');
@@ -156,8 +154,7 @@ class UIController {
     async fetchWeather() {
         try {
             // Fetch from our own FastAPI backend which caches the OWM response
-            const apiBase = (typeof ML_BRIDGE !== 'undefined') ? ML_BRIDGE.API_BASE : (window.location.hostname === 'localhost' ? 'http://localhost:8000' : '');
-            const res = await fetch(`${apiBase}/api/weather`);
+            const res = await fetch('http://localhost:8000/api/weather');
             if (!res.ok) throw new Error('API returned ' + res.status);
             const data = await res.json();
             
@@ -200,43 +197,41 @@ class UIController {
     addEventListeners() {
         // Target Temp Slider
         this.targetTempSlider.addEventListener('input', (e) => {
-            const val = parseFloat(e.target.value).toFixed(1);
-            this.targetTempVal.textContent = val;
-            if (this.targetTempValDisplay) {
-                this.targetTempValDisplay.innerHTML = val + '<span class="unit">&deg;C</span>';
-            }
+            if (this.targetTempVal) this.targetTempVal.textContent = parseFloat(e.target.value).toFixed(1);
+            if (this.targetTempVal2) this.targetTempVal2.textContent = parseFloat(e.target.value).toFixed(1);
             this.updateStats();
+        });
+        this.targetTempSlider.addEventListener('change', (e) => {
+            if (typeof ML_BRIDGE !== 'undefined') {
+                ML_BRIDGE.poll(parseFloat(e.target.value));
+            }
         });
 
         // Indoor Temp Slider
         if (this.indoorTempSlider) {
             this.indoorTempSlider.addEventListener('input', (e) => {
-                this.indoorAvg.innerHTML = parseFloat(e.target.value).toFixed(1) + '<span class="unit">&deg;C</span>';
+                if (this.manualIndoorVal) this.manualIndoorVal.textContent = parseFloat(e.target.value).toFixed(1);
                 this.updateStats();
+            });
+            this.indoorTempSlider.addEventListener('change', (e) => {
+                if (typeof ML_BRIDGE !== 'undefined') {
+                    ML_BRIDGE.poll(parseFloat(this.targetTempSlider.value));
+                }
             });
         }
 
         // Mode Toggles
-        this.modePredictive.addEventListener('click', () => {
-            this.activeMode = 'predictive';
-            this.modePredictive.classList.add('active');
-            this.modeStandard.classList.remove('active');
-            this.hvacController.reset();
-            this.smartEnergyKwh = 0; this.baselineEnergyKwh = 0;
-            this.smartCostRupees = 0; this.baselineCostRupees = 0;
-            this.smartCO2Kg = 0; this.baselineCO2Kg = 0;
-            this.lastSimTime = null;
-        });
-
-        this.modeStandard.addEventListener('click', () => {
-            this.activeMode = 'standard';
-            this.modeStandard.classList.add('active');
-            this.modePredictive.classList.remove('active');
-            this.smartEnergyKwh = 0; this.baselineEnergyKwh = 0;
-            this.smartCostRupees = 0; this.baselineCostRupees = 0;
-            this.smartCO2Kg = 0; this.baselineCO2Kg = 0;
-            this.lastSimTime = null;
-        });
+        if (this.modePredictive) {
+            this.modePredictive.addEventListener('click', () => {
+                this.activeMode = 'predictive';
+                this.modePredictive.classList.add('active');
+                this.hvacController.reset();
+                this.smartEnergyKwh = 0; this.baselineEnergyKwh = 0;
+                this.smartCostRupees = 0; this.baselineCostRupees = 0;
+                this.smartCO2Kg = 0; this.baselineCO2Kg = 0;
+                this.lastSimTime = null;
+            });
+        }
     }
 
     update(dt) {
@@ -298,31 +293,26 @@ class UIController {
         this.settings.occupancy = occupancy;
         const qOccupancyKw = occupancy * 0.12;
 
-        // --- INITIALIZE INDOOR TEMP FOR PHYSICS ---
-        let rawIndoorTemp;
-        if (this.indoorTempSlider) {
-            rawIndoorTemp = parseFloat(this.indoorTempSlider.value);
-        } else {
-            rawIndoorTemp = baseTemp; // Initial guess for physics iteration
-        }
+        // --- 4. ENVELOPE LOAD ---
+        const outdoorTemp = baseTemp;
+        const U_envelope = 0.35;
+        const A_envelope = 45;
+        const deltaT_envelope = Math.max(0, outdoorTemp - targetTemp);
+        const qEnvelopeKw = (U_envelope * A_envelope * deltaT_envelope) / 1000;
 
-        // --- 4. ENVELOPE HEAT TRANSFER ---
-        const envelopeUValue = 0.8;
-        const wallArea = 150.0; // Assume 150m2 of exposed wall/roof
-        // Realistic envelope heat transfer in kW: (U * A * dT) / 1000
-        const qEnvelopeKw = ((baseTemp - rawIndoorTemp) * envelopeUValue * wallArea) / 1000.0;
-
-        // --- THERMAL DECAY ---
-        const qDecayKw = (baseTemp - rawIndoorTemp) * 0.05;
+        // --- 5. THERMAL DECAY ---
+        const qDecayKw = qSolarKw * 0.08;
 
         // --- TOTAL PREDICTED HEAT LOAD ---
         const totalHeatLoadKw = qSolarKw + qOccupancyKw + qEnvelopeKw + qDecayKw;
+        
+        const buildingHeatLossCoeff = 0.5;
+        const totalGainDegC = totalHeatLoadKw / buildingHeatLossCoeff;
+        let rawIndoorTemp = baseTemp + totalGainDegC;
 
-        // --- 5. INDOOR TEMPERATURE CALCULATION (Fallback) ---
-        if (!this.indoorTempSlider) {
-            const buildingHeatLossCoeff = 0.5;
-            const totalGainDegC = totalHeatLoadKw / buildingHeatLossCoeff;
-            rawIndoorTemp = baseTemp + totalGainDegC;
+        // Override with manual slider if available
+        if (this.indoorTempSlider) {
+            rawIndoorTemp = parseFloat(this.indoorTempSlider.value);
         }
 
         // =====================================================================
@@ -356,7 +346,6 @@ class UIController {
         // --- BASELINE CONTROLLER (always runs in shadow for comparison) ---
         const baselinePower = this.bangbangController.compute(rawIndoorTemp, targetTemp);
 
-        // --- APPLY HVAC EFFECT ---
         let maxHvacPull = maxHvacDelta * (powerPct / 100);
         let actualHvacDelta = 0;
         if (Math.abs(rawDeviation) <= maxHvacPull) {
@@ -365,7 +354,7 @@ class UIController {
             actualHvacDelta = Math.sign(rawDeviation) * maxHvacPull;
         }
         
-        const indoorTemp = rawIndoorTemp - actualHvacDelta;
+        const indoorTemp = rawIndoorTemp; // User wants to manually set this with slider
         const exchangeKw = -(actualHvacDelta * (this.maxHvacCapacityKw / maxHvacDelta));
 
         // =====================================================================
@@ -393,13 +382,9 @@ class UIController {
         // =====================================================================
         //  UPDATE DASHBOARD
         // =====================================================================
-        if (!this.indoorTempSlider) {
-            this.indoorAvg.innerHTML = indoorTemp.toFixed(1) + '<span class="unit">&deg;C</span>';
-        }
-        
-        // Use rawIndoorTemp for deviation if slider exists, else indoorTemp
-        const displayTemp = this.indoorTempSlider ? rawIndoorTemp : indoorTemp;
-        const finalDeviation = displayTemp - targetTemp;
+        this.indoorAvg.innerHTML = indoorTemp.toFixed(1) + '<span class="unit">&deg;C</span>';
+
+        const finalDeviation = indoorTemp - targetTemp;
         const sign = finalDeviation > 0 ? '+' : (finalDeviation < 0 ? '-' : '');
         this.deviationVal.textContent = sign + Math.abs(finalDeviation).toFixed(1);
 
@@ -449,13 +434,14 @@ class UIController {
             if (this.activeMode === 'predictive' && this.mlPowerPct !== null) {
                 // ML Model trace
                 const pred = (typeof ML_BRIDGE !== 'undefined' && ML_BRIDGE.lastPrediction) ? ML_BRIDGE.lastPrediction : null;
+                const tracePowerKw = pred ? (pred.avg_power_w / 1000.0).toFixed(2) : 'N/A';
+                const currentLabel = this.mlModeLabel || controllerLabel;
                 traceHtml = `
-                    <div><b>Mode:</b> ${controllerLabel}</div>
+                    <div><b>Mode:</b> ${currentLabel}</div>
                     <div style="margin:4px 0; padding:4px; background:rgba(14,165,233,0.08); border-radius:4px;">
-                        <b>ML Predicted Power:</b> ${pred ? pred.total_power_kw.toFixed(2) + ' kW' : 'N/A'}
+                        <b>ML Predicted Power:</b> ${tracePowerKw} kW (per room)
                     </div>
                     <div><b>Avg Load:</b> ${pred ? pred.avg_load_percentage.toFixed(1) + '%' : 'N/A'}</div>
-                    <div><b>Rooms:</b> ${pred ? Object.keys(pred.per_room).length : '?'}</div>
                     <div><b>Occupancy:</b> ${pred ? pred.live_data.occupancy_from_hotspot + ' devices' : 'N/A'}</div>
                     <div><b>Weather:</b> ${pred ? pred.live_data.outside_temperature.toFixed(1) + '°C' : 'N/A'}</div>
                     <div><b>Baseline (BangBang):</b> ${baselinePower}%</div>

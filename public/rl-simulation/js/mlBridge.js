@@ -7,7 +7,7 @@
 // Pushes ML-predicted HVAC power into the simulation via window.SimulationAPI.
 
 const ML_BRIDGE = {
-    API_BASE: window.location.hostname === 'localhost' ? 'http://localhost:8000' : '',
+    API_BASE: 'http://localhost:8000',
     POLL_INTERVAL: 5000,
     lastPrediction: null,
     lastWeather: null,
@@ -92,11 +92,15 @@ const ML_BRIDGE = {
 
             const now = new Date();
             const outdoorTemp = this.lastWeather ? this.lastWeather.outside_temperature : 30;
+            
+            // Try to read manual indoor temp slider, fallback to outdoorTemp
+            const indoorSlider = document.getElementById('indoor-temp-slider');
+            const roomTemp = indoorSlider ? parseFloat(indoorSlider.value) : outdoorTemp;
 
             const payload = {
                 rooms: rooms,
                 required_temperature: targetTemp,
-                room_temperature: outdoorTemp,  // outdoor temp as proxy
+                room_temperature: roomTemp,  // use manual indoor temp
                 heating_setpoint: targetTemp - 2.0,
                 timestamp: now.toISOString(),
                 city: 'Chennai',
@@ -132,10 +136,12 @@ const ML_BRIDGE = {
         if (window.SimulationAPI && window.SimulationAPI.overrideHVAC) {
             const avgPower = pred.avg_load_percentage || 0;
             
-            // The RL model correctly outputs negative load for heating and positive load for cooling.
-            // The physics engine expects -ve exchangeKw for cooling, +ve for heating.
-            const exchangeKw = -1 * (avgPower / 100) * 5.0;
-            const modeLabel = 'XGBoost ML Model (Live)';
+            let sign = 0;
+            if (pred.hvac_mode === 'cooling') sign = -1;
+            else if (pred.hvac_mode === 'heating') sign = 1;
+            
+            const exchangeKw = sign * (avgPower / 100) * 5.0;
+            const modeLabel = `XGBoost ML Model (${pred.hvac_mode.toUpperCase()})`;
             window.SimulationAPI.overrideHVAC(avgPower, exchangeKw, modeLabel);
         }
 
@@ -152,31 +158,7 @@ const ML_BRIDGE = {
             occVal.textContent = this.lastOccupancy + ' devices';
         }
 
-        // Update ML prediction card
-        const mlPowerEl = document.getElementById('ml-power');
-        const mlLoadEl = document.getElementById('ml-load');
-        const mlStatusEl = document.getElementById('ml-status');
 
-        if (mlPowerEl) {
-            mlPowerEl.innerHTML = pred.total_power_kw.toFixed(2) + '<span class="unit">kW</span>';
-        }
-        if (mlLoadEl) {
-            mlLoadEl.innerHTML = pred.avg_load_percentage.toFixed(1) + '<span class="unit">%</span>';
-        }
-        if (mlStatusEl) {
-            mlStatusEl.textContent = `${Object.keys(pred.per_room).length} rooms • ${this.lastOccupancy} devices • ${pred.live_data.city}`;
-        }
-
-        // Update per-room breakdown
-        const roomBreakdown = document.getElementById('ml-room-breakdown');
-        if (roomBreakdown && pred.per_room) {
-            let html = '';
-            for (const [roomId, data] of Object.entries(pred.per_room)) {
-                const name = roomId.replace(/_/g, ' ').replace(/\b\w/g, c => c.toUpperCase());
-                html += `<li><span class="label">${name}</span><span class="val">${data.predicted_power_kw.toFixed(1)} kW (${data.hvac_load_percentage}%)</span></li>`;
-            }
-            roomBreakdown.innerHTML = html;
-        }
     },
 
     async poll(targetTemp) {

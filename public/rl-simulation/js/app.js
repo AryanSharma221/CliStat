@@ -163,31 +163,9 @@ document.addEventListener("DOMContentLoaded", () => {
                     const modeLabel = ui.activeMode === 'predictive' ? 'PID Predictive (fallback)' : 'Standard Reactive';
                     
                     window.SimulationAPI.overrideHVAC(avgPower, exchangeKw, modeLabel);
-                    
-                    const tempEl = document.getElementById('indoor-avg');
-                    if (tempEl) tempEl.innerHTML = avgTemp.toFixed(1) + '<span class="unit">&deg;C</span>';
-                    
-                    const devVal = document.getElementById('deviation-val');
-                    if (devVal) {
-                        const devC = avgTemp - avgTarget;
-                        const sign = devC > 0 ? '+' : '';
-                        devVal.textContent = sign + devC.toFixed(1);
-                    }
                 }
 
-                // Update Q-vectors
-                if (qData && qData.totals && frameCount % 15 === 0) {
-                    const t = qData.totals;
-                    const total = Math.abs(t.total) || 1;
-                    const setEl = (id, val) => {
-                        const el = document.getElementById(id);
-                        if (el) el.textContent = `${Math.round((val / total) * 100)}%`;
-                    };
-                    setEl('vec-solar', Math.abs(t.solar));
-                    setEl('vec-occ', Math.abs(t.occupancy));
-                    setEl('vec-env', Math.abs(t.envelope));
-                    setEl('vec-decay', Math.abs(t.decay));
-                }
+
             }
         } catch (e) {
             if (frameCount % 300 === 0) console.warn("AI tick error:", e);
