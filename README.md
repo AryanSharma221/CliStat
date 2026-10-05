@@ -5,7 +5,7 @@ A full-stack, smart thermostat ecosystem designed to completely rethink building
 
 ---
 
-## =ƒÅùn+Å System Architecture & Deep Technical Segregation
+## System Architecture & Deep Technical Segregation
 
 The platform is engineered as a highly decoupled, modern microservice architecture. It is strictly segregated into four distinct technological domains: **Frontend Tech**, **Backend Tech**, **The Simulation Engine**, and **The RL Model (Predictive Engine)**.
 
